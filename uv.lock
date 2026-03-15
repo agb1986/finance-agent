@@ -1,0 +1,31 @@
+version = 1
+revision = 3
+requires-python = ">=3.11"
+
+[manifest]
+members = [
+    "common",
+    "finance-agent",
+    "financial-news",
+]
+
+[[package]]
+name = "common"
+version = "0.1.0"
+source = { editable = "common" }
+
+[[package]]
+name = "finance-agent"
+version = "0.1.0"
+source = { virtual = "." }
+
+[[package]]
+name = "financial-news"
+version = "0.1.0"
+source = { editable = "skills/financial_news" }
+dependencies = [
+    { name = "common" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "common", editable = "common" }]
