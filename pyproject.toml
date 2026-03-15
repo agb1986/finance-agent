@@ -18,12 +18,12 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["skills"]
+testpaths = ["skills", "common/tests"]
 python_files = ["test_*.py"]
 addopts = "--cov --cov-fail-under=85 --cov-report=term-missing"
 
 [tool.coverage.run]
-source = ["skills"]
+source = ["skills", "common/src"]
 
 [tool.coverage.report]
 omit = ["*/test_*.py"]

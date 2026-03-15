@@ -1,3 +1,8 @@
+---
+name: financial-news
+description: Fetches and summarises financial news from RSS feeds. Use when the user asks about today's market news, recent market movements, crypto news, earnings reports, or stock picks.
+---
+
 # Skill: Financial News
 
 Fetches and summarises daily financial news from multiple RSS feeds.
