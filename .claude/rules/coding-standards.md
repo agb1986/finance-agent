@@ -28,3 +28,23 @@
 - Max line length: 100
 - Use f-strings over `.format()`
 - No print debugging left in committed code
+
+## Linting & Formatting
+
+All code must pass `ruff` before being committed. Ruff is configured in the root `pyproject.toml` (line length 100, rules: E/W/F/I/UP).
+
+```bash
+# Check for lint issues
+uv run ruff check .
+
+# Auto-fix all fixable issues
+uv run ruff check --fix .
+
+# Format code
+uv run ruff format .
+
+# Check formatting without applying (e.g. in CI)
+uv run ruff format --check .
+```
+
+Always run both `ruff check --fix` and `ruff format` before committing.

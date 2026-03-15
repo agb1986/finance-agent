@@ -35,3 +35,70 @@ See `.claude/rules/skills.md` for conventions.
 ## Common Package
 
 Shared utilities live in `common/`. All skills depend on it via the uv workspace. Import as `from common.<module> import ...`.
+
+## Logging
+
+All scripts must use the shared logger from `common.logger`. Log at critical points (function entry, key decisions, errors, output written).
+
+```python
+from common.args import base_parser
+from common.logger import get_logger, setup
+
+parser = argparse.ArgumentParser(parents=[base_parser()])
+# ... add script-specific args ...
+args = parser.parse_args()
+
+logger = setup(args.debug)  # call once in main()
+logger = get_logger()       # call anywhere else
+```
+
+- `--debug` flag is provided by `base_parser()` — always use it as a parent
+- `setup(args.debug)` must be called once in `main()` before any logging
+- `logger.debug(...)` — only shown when `--debug` is passed
+- `logger.error(...)` — always shown regardless of `--debug`
+- Log format: `LEVEL::timestamp::script::function::message`
+
+## Testing
+
+Each script in `scripts/` must have a corresponding `test_<script>.py` in the same directory.
+
+### Setup
+
+Add `pytest` and `pytest-cov` as dev dependencies in the skill's `pyproject.toml`:
+
+```toml
+[dependency-groups]
+dev = ["pytest>=9.0", "pytest-cov>=7.0"]
+```
+
+Run tests:
+```bash
+uv run pytest skills/<skill_name>/scripts/test_<script>.py -v
+uv run pytest skills/<skill_name>/scripts/test_<script>.py --cov --cov-report=term-missing
+```
+
+### Conventions
+
+- Use `unittest.mock` (`patch`, `MagicMock`) — no third-party mock libraries
+- Mock all I/O boundaries: `feedparser.parse`, `Path.write_text`, `Path.mkdir`, etc.
+- Patch module-level constants (e.g. `FEEDS`, `TMP_DIR`) via `patch.object` to isolate tests
+- Add a `reset_logger` autouse fixture to clear logger handlers between tests:
+
+```python
+@pytest.fixture(autouse=True)
+def reset_logger():
+    yield
+    logging.getLogger("finance_agent").handlers.clear()
+```
+
+- Import the script under test by inserting its directory into `sys.path`:
+
+```python
+sys.path.insert(0, str(Path(__file__).parent))
+import fetch_news
+```
+
+### Coverage targets
+
+- Target 90% coverage; 80%+ is acceptable
+- The `if __name__ == "__main__"` guard does not need to be covered

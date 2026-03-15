@@ -10,3 +10,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/common"]
+
+[dependency-groups]
+dev = ["pytest>=9.0", "pytest-cov>=7.0"]
