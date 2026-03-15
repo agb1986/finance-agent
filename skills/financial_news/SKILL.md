@@ -1,5 +1,6 @@
 ---
 name: financial-news
+version: 0.2.0
 description: Fetches and summarises financial news from RSS feeds. Use when the user asks about today's market news, recent market movements, crypto news, earnings reports, or stock picks.
 ---
 
