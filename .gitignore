@@ -210,3 +210,6 @@ __marimo__/
 ## Use to write prompts to be consumed by Claude
 prompt.md
 .python-version
+
+# Skill tmp output dirs
+skills/*/tmp/
