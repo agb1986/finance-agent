@@ -93,17 +93,27 @@ EOF
 
 ### Updating an existing PR
 
+First, fetch the current PR body so the existing summary is preserved:
+
 ```bash
-gh pr edit <number> --body "$(cat <<'EOF'
+gh api repos/<owner>/<repo>/pulls/<number> --jq '.body'
+```
+
+Then update the PR by **appending** the new changes to the existing summary and commits list — do not discard what was already there:
+
+```bash
+gh api repos/<owner>/<repo>/pulls/<number> -X PATCH -f body="$(cat <<'EOF'
 ## Summary
-<bullet list of all changes in this PR>
+<existing bullet points from current PR body>
+<new bullet points for changes in this update>
 
 ## Commits
-<bullet list of all commits in this PR>
+<existing commits from current PR body>
+<new commits added since last update>
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 EOF
-)"
+)" --jq '.html_url'
 ```
 
-Use `git log origin/main..HEAD --oneline` to get the list of commits for the PR body.
+Use `git log origin/main..HEAD --oneline` to get the full commit list for the PR body.
