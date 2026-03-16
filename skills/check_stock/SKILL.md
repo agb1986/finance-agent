@@ -1,42 +1,45 @@
 ---
 name: check-stock
-version: 0.1.0
-description: Fetches the current quote and key details for a given stock symbol. Use when the user asks about a specific stock's current price, performance, or fundamentals.
+version: 0.2.0
+description: Fetches a stock quote, historical OHLCV data, and charts for a given symbol. Use when the user asks about a specific stock's price, performance, history, or chart.
 ---
 
 # Skill: Check Stock
 
-Fetches the current quote and key details for a given stock symbol and writes the result to a JSON file.
+Runs a three-step workflow: fetches the current quote, fetches historical price data, then generates charts (ASCII to console + Jupyter notebook).
 
 ## When to invoke
 
 Use this skill when the user asks about:
-- The current price of a stock
-- How a specific stock is performing today
-- Key fundamentals for a stock (P/E ratio, market cap, 52-week range, etc.)
+- The current price or performance of a specific stock
+- Historical price data or charts for a stock
+- Key fundamentals (P/E ratio, market cap, 52-week range, etc.)
 - Any question referencing a ticker symbol
+
+## Inputs
+
+| Argument | Required | Default | Description |
+|---|---|---|---|
+| `--symbol` | Yes | — | Ticker symbol, e.g. `AMZN`, `BTC-USD`, `HSBA.L` |
+| `--market` | No | — | Exchange/market, e.g. `NASDAQ`. Use when the user specifies one or the symbol is ambiguous. |
+| `--period` | No | `1y` | History lookback period. One of: `1d`, `5d`, `1mo`, `3mo`, `6mo`, `1y`, `2y`, `5y`, `10y`, `ytd`, `max` |
+
+---
 
 ## How to invoke
 
-### Step 1 — Run the check_stock script
+### Step 1 — Fetch the current quote
 
 ```bash
-uv run skills/check_stock/scripts/fetch_quote.py --symbol <SYMBOL>
-uv run skills/check_stock/scripts/fetch_quote.py --symbol <SYMBOL> --market <MARKET>
+uv run skills/check_stock/scripts/fetch_quote.py --symbol <SYMBOL> [--market <MARKET>]
 ```
 
-Arguments:
-- `--symbol` (required) — ticker symbol, e.g. `AMZN`
-- `--market` (optional) — exchange or market, e.g. `NASDAQ`. Use when the user specifies one or when the symbol is ambiguous.
-
-The script will print the path to the output file on stdout, e.g.:
+The script prints the path to the output JSON file, e.g.:
 ```
 skills/check_stock/tmp/check_stock_AMZN_20260316_090000.json
 ```
 
-### Step 2 — Read the output file
-
-Read the file path returned in Step 1. It contains a JSON object with the following fields:
+Read the file. It contains:
 
 ```json
 {
@@ -44,28 +47,95 @@ Read the file path returned in Step 1. It contains a JSON object with the follow
   "market":         "NASDAQ",
   "fetched_at":     "2026-03-16T09:00:00Z",
   "name":           "Amazon.com, Inc.",
-  "price":          185.50,
+  "price":          207.67,
   "currency":       "USD",
-  "change":         2.30,
-  "change_percent": 1.25,
-  "volume":         32000000,
-  "market_cap":     1950000000000,
-  "pe_ratio":       38.2,
-  "week_52_high":   230.00,
-  "week_52_low":    151.61
+  "change":         -1.86,
+  "change_percent": -0.8877,
+  "volume":         35662137,
+  "market_cap":     2229321072640,
+  "pe_ratio":       29.0,
+  "week_52_high":   258.60,
+  "week_52_low":    161.38
 }
 ```
 
-Unknown or unavailable fields will be `null`.
+---
 
-### Step 3 — Summarise for the user
+### Step 2 — Fetch historical price data
 
-Present the quote in a concise, readable format. Include:
-- Current price and currency
-- Change vs. previous close (absolute and percentage)
-- Key fundamentals: market cap, P/E ratio, 52-week range
-- Volume if notable
+```bash
+uv run skills/check_stock/scripts/fetch_history.py --symbol <SYMBOL> [--market <MARKET>] [--period <PERIOD>]
+```
+
+The script prints the path to the output JSON file, e.g.:
+```
+skills/check_stock/tmp/history_AMZN_1y_20260316_090000.json
+```
+
+Read the file. It contains a `bars` array of daily OHLCV records:
+
+```json
+{
+  "symbol": "AMZN",
+  "market": "NASDAQ",
+  "period": "1y",
+  "fetched_at": "2026-03-16T09:00:00Z",
+  "bars": [
+    { "date": "2025-03-17", "open": 190.00, "high": 195.00, "low": 188.50, "close": 193.20, "volume": 28000000 }
+  ]
+}
+```
+
+---
+
+### Step 3 — Generate charts
+
+```bash
+uv run skills/check_stock/scripts/chart_history.py --input <path/to/history.json>
+```
+
+This script:
+- Renders an ASCII line chart of closing prices to the console
+- Writes a Jupyter notebook (`.ipynb`) with pre-rendered candlestick, line, and OHLC charts to `tmp/`
+
+The script prints the path to the notebook, e.g.:
+```
+skills/check_stock/tmp/chart_AMZN_1y_20260316_090100.ipynb
+```
+
+---
+
+### Step 4 — Present output to the user
+
+Combine all three outputs into a single response using **exactly** this format:
+
+```markdown
+## <Name> (<SYMBOL>) — <fetched_at date only>
+
+**Price:** <price> <currency> (<change> / <change_percent>%)
+**Volume:** <volume>
+**Market Cap:** <market_cap>
+**P/E Ratio:** <pe_ratio>
+**52-week range:** <week_52_low> – <week_52_high>
+
+---
+
+<ASCII chart output — copy exactly as printed to console>
+
+---
+
+**Generated files:**
+- Quote: `<path to check_stock_*.json>`
+- History: `<path to history_*.json>`
+- Notebook: `<path to chart_*.ipynb>`
+
+> Open the notebook: `jupyter notebook <path to chart_*.ipynb>`
+```
+
+Format `market_cap` in human-readable form (e.g. `$2.23T`, `$450B`). Format `change_percent` with 2 decimal places and a `+` prefix when positive. If any field is `null`, omit that line.
+
+---
 
 ## Sources
 
-> **Note:** The data source is not yet configured. `fetch_quote` in `src/check_stock/fetcher.py` is a stub pending API provider selection (e.g. yfinance, Alpha Vantage, Polygon.io).
+Data provided by [yfinance](https://github.com/ranaroussi/yfinance) via Yahoo Finance.
