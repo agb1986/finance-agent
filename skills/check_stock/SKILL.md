@@ -28,6 +28,23 @@ Use this skill when the user asks about:
 
 ## How to invoke
 
+### Step 0 — Verify prerequisites
+
+Run these checks before any other step. If any command fails, report the error to the user and ask whether you should self-heal by running `uv sync --all-packages`.
+
+```bash
+# Python is available via uv
+uv run python --version
+
+# Root venv exists
+test -d .venv && echo "venv OK" || echo "ERROR: .venv not found"
+
+# Required packages are importable
+uv run python -c "import check_stock, yfinance, mplfinance, plotext, nbformat, common" && echo "All packages OK"
+```
+
+---
+
 ### Step 1 — Fetch the current quote
 
 ```bash

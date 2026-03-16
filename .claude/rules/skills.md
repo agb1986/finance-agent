@@ -26,6 +26,8 @@ Each skill must have a `SKILL.md` that tells Claude:
 - Which scripts to run and with what arguments
 - Expected output format
 
+The first step in **How to invoke** must always be `Step 0 — Verify prerequisites`. See `CLAUDE.md` for the required check block and failure behaviour.
+
 ## Scripts
 
 Scripts in `scripts/` are thin entrypoints. All business logic lives in `src/<skill_name>/`. Scripts should:
@@ -40,5 +42,5 @@ Scripts in `scripts/` are thin entrypoints. All business logic lives in `src/<sk
 3. Write logic in `src/<skill_name>/`
 4. Write thin script entrypoints in `scripts/`
 5. Write tests in `tests/`
-6. Write a `SKILL.md` describing invocation
+6. Write a `SKILL.md` describing invocation — include `Step 0 — Verify prerequisites` as the first step
 7. Run `uv sync --all-packages` to register the new workspace member

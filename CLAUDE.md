@@ -26,6 +26,23 @@ Each skill lives in `skills/<skill_name>/` and is a uv workspace member. Skills 
 
 See `.claude/rules/skills.md` for conventions.
 
+### Step 0 — Prerequisites (required in every skill)
+
+Every skill's `SKILL.md` must begin its **How to invoke** section with a `Step 0 — Verify prerequisites` block containing these inline bash checks:
+
+```bash
+# Python is available via uv
+uv run python --version
+
+# Root venv exists
+test -d .venv && echo "venv OK" || echo "ERROR: .venv not found"
+
+# Required packages are importable (list all packages this skill needs)
+uv run python -c "import <skill_pkg>, <dep1>, <dep2>, common" && echo "All packages OK"
+```
+
+**On failure:** report the failing check to the user and ask whether you should self-heal by running `uv sync --all-packages`.
+
 ## Environment
 
 - Python managed via `uv`. Always use `uv run` to execute scripts.
