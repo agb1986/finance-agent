@@ -15,8 +15,9 @@ finance-agent/
 └── skills/
     └── <skill_name>/
         ├── pyproject.toml        # uv workspace member
-        ├── src/<skill_name>/     # skill package
-        └── scripts/              # thin entrypoint scripts invoked by Claude
+        ├── src/<skill_name>/     # skill package (business logic)
+        ├── scripts/              # thin entrypoint scripts invoked by Claude
+        └── tests/                # all tests for this skill
 ```
 
 ## Skills
@@ -24,6 +25,23 @@ finance-agent/
 Each skill lives in `skills/<skill_name>/` and is a uv workspace member. Skills are invoked by Claude via a `SKILL.md` file at the root of each skill directory.
 
 See `.claude/rules/skills.md` for conventions.
+
+### Step 0 — Prerequisites (required in every skill)
+
+Every skill's `SKILL.md` must begin its **How to invoke** section with a `Step 0 — Verify prerequisites` block containing these inline bash checks:
+
+```bash
+# Python is available via uv
+uv run python --version
+
+# Root venv exists
+test -d .venv && echo "venv OK" || echo "ERROR: .venv not found"
+
+# Required packages are importable (list all packages this skill needs)
+uv run python -c "import <skill_pkg>, <dep1>, <dep2>, common" && echo "All packages OK"
+```
+
+**On failure:** report the failing check to the user and ask whether you should self-heal by running `uv sync --all-packages`.
 
 ## Environment
 
@@ -60,7 +78,7 @@ logger = get_logger()       # call anywhere else
 
 ## Testing
 
-Each script in `scripts/` must have a corresponding `test_<script>.py` in the same directory.
+All tests live in `tests/` at the skill root. Each script in `scripts/` must have a corresponding `test_<script>.py` in `tests/`.
 
 ### Setup
 
@@ -73,8 +91,8 @@ dev = ["pytest>=9.0", "pytest-cov>=7.0"]
 
 Run tests:
 ```bash
-uv run pytest skills/<skill_name>/scripts/test_<script>.py -v
-uv run pytest skills/<skill_name>/scripts/test_<script>.py --cov --cov-report=term-missing
+uv run pytest skills/<skill_name>/tests/ -v
+uv run pytest skills/<skill_name>/tests/ --cov --cov-report=term-missing
 ```
 
 ### Conventions
@@ -91,10 +109,15 @@ def reset_logger():
     logging.getLogger("finance_agent").handlers.clear()
 ```
 
-- Import the script under test by inserting its directory into `sys.path`:
+- Test files in `tests/` import library code directly from the installed package, and import
+  thin scripts by inserting `scripts/` into `sys.path`:
 
 ```python
-sys.path.insert(0, str(Path(__file__).parent))
+# library code — imported directly
+from financial_news.fetcher import strip_html, fetch_feed
+
+# thin script — imported via sys.path
+sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 import fetch_news
 ```
 
