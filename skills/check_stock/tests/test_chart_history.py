@@ -1,5 +1,6 @@
 """Tests for chart_history.py and check_stock.charter."""
 
+import importlib.util
 import json
 import logging
 import sys
@@ -8,9 +9,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
-import chart_history
-from check_stock.charter import (
+_spec = importlib.util.spec_from_file_location(
+    "check_stock_chart_history", Path(__file__).parent.parent / "scripts" / "chart_history.py"
+)
+chart_history = importlib.util.module_from_spec(_spec)
+sys.modules["check_stock_chart_history"] = chart_history
+_spec.loader.exec_module(chart_history)
+from check_stock.charter import (  # noqa: E402
     CHART_TYPES,
     chart_to_console,
     chart_to_notebook,
@@ -190,8 +195,8 @@ class TestMain:
         history = self._history_file(tmp_path)
         with (
             patch.object(chart_history, "TMP_DIR", tmp_path),
-            patch("chart_history.chart_to_console"),
-            patch("chart_history.chart_to_notebook"),
+            patch("check_stock_chart_history.chart_to_console"),
+            patch("check_stock_chart_history.chart_to_notebook"),
             patch("sys.argv", ["chart_history.py", "--input", str(history)]),
         ):
             chart_history.main()
@@ -205,9 +210,9 @@ class TestMain:
         history = self._history_file(tmp_path)
         with (
             patch.object(chart_history, "TMP_DIR", tmp_path),
-            patch("chart_history.chart_to_console"),
-            patch("chart_history.chart_to_notebook"),
-            patch("chart_history.find_latest_history", return_value=history) as mock_find,
+            patch("check_stock_chart_history.chart_to_console"),
+            patch("check_stock_chart_history.chart_to_notebook"),
+            patch("check_stock_chart_history.find_latest_history", return_value=history) as mock_find,
             patch("sys.argv", ["chart_history.py"]),
         ):
             chart_history.main()
@@ -228,8 +233,8 @@ class TestMain:
         history = self._history_file(tmp_path)
         with (
             patch.object(chart_history, "TMP_DIR", tmp_path),
-            patch("chart_history.chart_to_console") as mock_console,
-            patch("chart_history.chart_to_notebook") as mock_nb,
+            patch("check_stock_chart_history.chart_to_console") as mock_console,
+            patch("check_stock_chart_history.chart_to_notebook") as mock_nb,
             patch("sys.argv", ["chart_history.py", "--input", str(history)]),
         ):
             chart_history.main()
@@ -241,8 +246,8 @@ class TestMain:
         history = self._history_file(tmp_path)
         with (
             patch.object(chart_history, "TMP_DIR", tmp_path),
-            patch("chart_history.chart_to_console"),
-            patch("chart_history.chart_to_notebook", side_effect=RuntimeError("render error")),
+            patch("check_stock_chart_history.chart_to_console"),
+            patch("check_stock_chart_history.chart_to_notebook", side_effect=RuntimeError("render error")),
             patch("sys.argv", ["chart_history.py", "--input", str(history)]),
         ):
             with pytest.raises(SystemExit) as exc_info:

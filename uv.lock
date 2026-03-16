@@ -15,6 +15,7 @@ resolution-markers = [
 
 [manifest]
 members = [
+    "check-crypto",
     "check-stock",
     "common",
     "finance-agent",
@@ -234,9 +235,42 @@ wheels = [
 ]
 
 [[package]]
+name = "check-crypto"
+version = "0.1.0"
+source = { editable = "skills/check_crypto" }
+dependencies = [
+    { name = "common" },
+    { name = "mplfinance" },
+    { name = "nbformat" },
+    { name = "plotext" },
+    { name = "pycoingecko" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-cov" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "common", editable = "common" },
+    { name = "mplfinance", specifier = ">=0.12.10b0" },
+    { name = "nbformat", specifier = ">=5.10.4" },
+    { name = "plotext", specifier = ">=5.3.2" },
+    { name = "pycoingecko", specifier = ">=3.1.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=9.0" },
+    { name = "pytest-cov", specifier = ">=7.0" },
+]
+
+[[package]]
 name = "check-stock"
 version = "0.1.0"
-source = { virtual = "skills/check_stock" }
+source = { editable = "skills/check_stock" }
 dependencies = [
     { name = "common" },
     { name = "mplfinance" },
@@ -594,7 +628,7 @@ dev = [{ name = "ruff", specifier = ">=0.15.6" }]
 [[package]]
 name = "financial-news"
 version = "0.1.0"
-source = { virtual = "skills/financial_news" }
+source = { editable = "skills/financial_news" }
 dependencies = [
     { name = "common" },
     { name = "feedparser" },
@@ -1590,6 +1624,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/1f/3e/38ff2ddee5cc946f575c9d8cc822e34bde205cf61acf8099ad88ef19d7d2/protobuf-7.34.0-cp310-abi3-win32.whl", hash = "sha256:f791ec509707a1d91bd02e07df157e75e4fb9fbdad12a81b7396201ec244e2e3", size = 426628, upload-time = "2026-02-27T00:30:21.555Z" },
     { url = "https://files.pythonhosted.org/packages/cb/71/7c32eaf34a61a1bae1b62a2ac4ffe09b8d1bb0cf93ad505f42040023db89/protobuf-7.34.0-cp310-abi3-win_amd64.whl", hash = "sha256:9f9079f1dde4e32342ecbd1c118d76367090d4aaa19da78230c38101c5b3dd40", size = 437901, upload-time = "2026-02-27T00:30:22.836Z" },
     { url = "https://files.pythonhosted.org/packages/a4/e7/14dc9366696dcb53a413449881743426ed289d687bcf3d5aee4726c32ebb/protobuf-7.34.0-py3-none-any.whl", hash = "sha256:e3b914dd77fa33fa06ab2baa97937746ab25695f389869afdf03e81f34e45dc7", size = 170716, upload-time = "2026-02-27T00:30:23.994Z" },
+]
+
+[[package]]
+name = "pycoingecko"
+version = "3.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/06/13/2678a9ee00171855290a53b2a661e034f710cf063394d685bb74349a3e0b/pycoingecko-3.2.0.tar.gz", hash = "sha256:c48935d6e608efd9a798cbc4be30f1b43176cb680503dfef8f9352e038fc7605", size = 18002, upload-time = "2024-11-13T00:30:08.201Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7f/94/fd71f6d25daa9d53da60c7bb3adb5a4f6b92d9ec831c3f3ac1309d430db1/pycoingecko-3.2.0-py3-none-any.whl", hash = "sha256:b4fec16e9420b3e2f1ae38ea95710b631c9809cf1bffbf0021cc6608e357925b", size = 10841, upload-time = "2024-11-13T00:30:06.511Z" },
 ]
 
 [[package]]

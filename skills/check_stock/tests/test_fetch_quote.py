@@ -1,5 +1,6 @@
 """Tests for fetch_quote.py and check_stock.fetcher.fetch_quote."""
 
+import importlib.util
 import json
 import logging
 import sys
@@ -8,9 +9,13 @@ from unittest.mock import patch
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
-import fetch_quote
-from check_stock.fetcher import fetch_quote as fetch_quote_fn
+_spec = importlib.util.spec_from_file_location(
+    "check_stock_fetch_quote", Path(__file__).parent.parent / "scripts" / "fetch_quote.py"
+)
+fetch_quote = importlib.util.module_from_spec(_spec)
+sys.modules["check_stock_fetch_quote"] = fetch_quote
+_spec.loader.exec_module(fetch_quote)
+from check_stock.fetcher import fetch_quote as fetch_quote_fn  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -152,7 +157,7 @@ class TestMain:
     def test_writes_json_and_prints_path(self, tmp_path, capsys):
         with (
             patch.object(fetch_quote, "TMP_DIR", tmp_path),
-            patch("fetch_quote.fetch_quote_data", return_value=SAMPLE_QUOTE),
+            patch("check_stock_fetch_quote.fetch_quote_data", return_value=SAMPLE_QUOTE),
         ):
             with patch("sys.argv", ["fetch_quote.py", "--symbol", "AMZN"]):
                 fetch_quote.main()
@@ -169,7 +174,7 @@ class TestMain:
     def test_passes_market_to_fetcher(self, tmp_path):
         with (
             patch.object(fetch_quote, "TMP_DIR", tmp_path),
-            patch("fetch_quote.fetch_quote_data", return_value=SAMPLE_QUOTE) as mock_fetch,
+            patch("check_stock_fetch_quote.fetch_quote_data", return_value=SAMPLE_QUOTE) as mock_fetch,
         ):
             with patch("sys.argv", ["fetch_quote.py", "--symbol", "AMZN", "--market", "NASDAQ"]):
                 fetch_quote.main()
@@ -179,7 +184,7 @@ class TestMain:
     def test_symbol_uppercased(self, tmp_path):
         with (
             patch.object(fetch_quote, "TMP_DIR", tmp_path),
-            patch("fetch_quote.fetch_quote_data", return_value=SAMPLE_QUOTE) as mock_fetch,
+            patch("check_stock_fetch_quote.fetch_quote_data", return_value=SAMPLE_QUOTE) as mock_fetch,
         ):
             with patch("sys.argv", ["fetch_quote.py", "--symbol", "amzn"]):
                 fetch_quote.main()
@@ -189,7 +194,7 @@ class TestMain:
     def test_exits_on_not_implemented(self, tmp_path):
         with (
             patch.object(fetch_quote, "TMP_DIR", tmp_path),
-            patch("fetch_quote.fetch_quote_data", side_effect=NotImplementedError("stub")),
+            patch("check_stock_fetch_quote.fetch_quote_data", side_effect=NotImplementedError("stub")),
         ):
             with patch("sys.argv", ["fetch_quote.py", "--symbol", "AMZN"]):
                 with pytest.raises(SystemExit) as exc_info:
@@ -200,7 +205,7 @@ class TestMain:
     def test_exits_on_fetch_error(self, tmp_path):
         with (
             patch.object(fetch_quote, "TMP_DIR", tmp_path),
-            patch("fetch_quote.fetch_quote_data", side_effect=RuntimeError("API error")),
+            patch("check_stock_fetch_quote.fetch_quote_data", side_effect=RuntimeError("API error")),
         ):
             with patch("sys.argv", ["fetch_quote.py", "--symbol", "AMZN"]):
                 with pytest.raises(SystemExit) as exc_info:
@@ -218,7 +223,7 @@ class TestMain:
     def test_no_file_written_on_error(self, tmp_path):
         with (
             patch.object(fetch_quote, "TMP_DIR", tmp_path),
-            patch("fetch_quote.fetch_quote_data", side_effect=RuntimeError("API error")),
+            patch("check_stock_fetch_quote.fetch_quote_data", side_effect=RuntimeError("API error")),
         ):
             with patch("sys.argv", ["fetch_quote.py", "--symbol", "AMZN"]):
                 with pytest.raises(SystemExit):
@@ -230,7 +235,7 @@ class TestMain:
         nested = tmp_path / "nested" / "tmp"
         with (
             patch.object(fetch_quote, "TMP_DIR", nested),
-            patch("fetch_quote.fetch_quote_data", return_value=SAMPLE_QUOTE),
+            patch("check_stock_fetch_quote.fetch_quote_data", return_value=SAMPLE_QUOTE),
         ):
             with patch("sys.argv", ["fetch_quote.py", "--symbol", "AMZN"]):
                 fetch_quote.main()
