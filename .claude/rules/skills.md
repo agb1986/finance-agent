@@ -12,8 +12,10 @@ skills/<skill_name>/
 │   └── <skill_name>/
 │       ├── __init__.py
 │       └── ...           # skill logic (not scripts)
-└── scripts/
-    └── <action>.py       # thin entrypoints, called by Claude via uv run
+├── scripts/
+│   └── <action>.py       # thin entrypoints, called by Claude via uv run
+└── tests/
+    └── test_<action>.py  # tests for scripts and library modules
 ```
 
 ## SKILL.md Format
@@ -37,5 +39,6 @@ Scripts in `scripts/` are thin entrypoints. All business logic lives in `src/<sk
 2. Add a `pyproject.toml` declaring `common` as a dependency
 3. Write logic in `src/<skill_name>/`
 4. Write thin script entrypoints in `scripts/`
-5. Write a `SKILL.md` describing invocation
-6. Run `uv sync --all-packages` to register the new workspace member
+5. Write tests in `tests/`
+6. Write a `SKILL.md` describing invocation
+7. Run `uv sync --all-packages` to register the new workspace member
