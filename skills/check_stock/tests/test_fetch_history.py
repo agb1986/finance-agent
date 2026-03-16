@@ -1,5 +1,6 @@
 """Tests for fetch_history.py and check_stock.fetcher.fetch_history."""
 
+import importlib.util
 import json
 import logging
 import sys
@@ -8,9 +9,13 @@ from unittest.mock import patch
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
-import fetch_history
-from check_stock.fetcher import fetch_history as fetch_history_fn
+_spec = importlib.util.spec_from_file_location(
+    "check_stock_fetch_history", Path(__file__).parent.parent / "scripts" / "fetch_history.py"
+)
+fetch_history = importlib.util.module_from_spec(_spec)
+sys.modules["check_stock_fetch_history"] = fetch_history
+_spec.loader.exec_module(fetch_history)
+from check_stock.fetcher import fetch_history as fetch_history_fn  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -154,7 +159,7 @@ class TestMain:
     def test_writes_json_and_prints_path(self, tmp_path, capsys):
         with (
             patch.object(fetch_history, "TMP_DIR", tmp_path),
-            patch("fetch_history.fetch_history_data", return_value=SAMPLE_RESULT),
+            patch("check_stock_fetch_history.fetch_history_data", return_value=SAMPLE_RESULT),
             patch("sys.argv", ["fetch_history.py", "--symbol", "AMZN"]),
         ):
             fetch_history.main()
@@ -170,7 +175,7 @@ class TestMain:
     def test_symbol_uppercased(self, tmp_path):
         with (
             patch.object(fetch_history, "TMP_DIR", tmp_path),
-            patch("fetch_history.fetch_history_data", return_value=SAMPLE_RESULT) as mock_fn,
+            patch("check_stock_fetch_history.fetch_history_data", return_value=SAMPLE_RESULT) as mock_fn,
             patch("sys.argv", ["fetch_history.py", "--symbol", "amzn"]),
         ):
             fetch_history.main()
@@ -180,7 +185,7 @@ class TestMain:
     def test_default_period(self, tmp_path):
         with (
             patch.object(fetch_history, "TMP_DIR", tmp_path),
-            patch("fetch_history.fetch_history_data", return_value=SAMPLE_RESULT) as mock_fn,
+            patch("check_stock_fetch_history.fetch_history_data", return_value=SAMPLE_RESULT) as mock_fn,
             patch("sys.argv", ["fetch_history.py", "--symbol", "AMZN"]),
         ):
             fetch_history.main()
@@ -190,7 +195,7 @@ class TestMain:
     def test_custom_period(self, tmp_path):
         with (
             patch.object(fetch_history, "TMP_DIR", tmp_path),
-            patch("fetch_history.fetch_history_data", return_value=SAMPLE_RESULT) as mock_fn,
+            patch("check_stock_fetch_history.fetch_history_data", return_value=SAMPLE_RESULT) as mock_fn,
             patch("sys.argv", ["fetch_history.py", "--symbol", "AMZN", "--period", "6mo"]),
         ):
             fetch_history.main()
@@ -200,7 +205,7 @@ class TestMain:
     def test_passes_market(self, tmp_path):
         with (
             patch.object(fetch_history, "TMP_DIR", tmp_path),
-            patch("fetch_history.fetch_history_data", return_value=SAMPLE_RESULT) as mock_fn,
+            patch("check_stock_fetch_history.fetch_history_data", return_value=SAMPLE_RESULT) as mock_fn,
             patch("sys.argv", ["fetch_history.py", "--symbol", "AMZN", "--market", "NASDAQ"]),
         ):
             fetch_history.main()
@@ -210,7 +215,7 @@ class TestMain:
     def test_exits_on_value_error(self, tmp_path):
         with (
             patch.object(fetch_history, "TMP_DIR", tmp_path),
-            patch("fetch_history.fetch_history_data", side_effect=ValueError("bad period")),
+            patch("check_stock_fetch_history.fetch_history_data", side_effect=ValueError("bad period")),
             patch("sys.argv", ["fetch_history.py", "--symbol", "AMZN"]),
         ):
             with pytest.raises(SystemExit) as exc_info:
@@ -221,7 +226,7 @@ class TestMain:
     def test_exits_on_unexpected_error(self, tmp_path):
         with (
             patch.object(fetch_history, "TMP_DIR", tmp_path),
-            patch("fetch_history.fetch_history_data", side_effect=RuntimeError("network error")),
+            patch("check_stock_fetch_history.fetch_history_data", side_effect=RuntimeError("network error")),
             patch("sys.argv", ["fetch_history.py", "--symbol", "AMZN"]),
         ):
             with pytest.raises(SystemExit) as exc_info:
@@ -240,7 +245,7 @@ class TestMain:
         nested = tmp_path / "nested" / "tmp"
         with (
             patch.object(fetch_history, "TMP_DIR", nested),
-            patch("fetch_history.fetch_history_data", return_value=SAMPLE_RESULT),
+            patch("check_stock_fetch_history.fetch_history_data", return_value=SAMPLE_RESULT),
             patch("sys.argv", ["fetch_history.py", "--symbol", "AMZN"]),
         ):
             fetch_history.main()

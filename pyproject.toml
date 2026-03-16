@@ -20,7 +20,7 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["skills", "common/tests"]
 python_files = ["test_*.py"]
-addopts = "--cov --cov-fail-under=85 --cov-report=term-missing"
+addopts = "--cov --cov-fail-under=85 --cov-report=term-missing --import-mode=importlib"
 
 [tool.coverage.run]
 source = ["skills", "common/src"]
