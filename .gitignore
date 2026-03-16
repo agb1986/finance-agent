@@ -209,6 +209,9 @@ __marimo__/
 # Local
 ## Use to write prompts to be consumed by Claude
 prompt.md
+## Output agent data
+output.md 
+
 .python-version
 
 # Skill tmp output dirs

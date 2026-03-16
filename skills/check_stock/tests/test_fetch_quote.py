@@ -1,4 +1,4 @@
-"""Tests for fetch_quote.py"""
+"""Tests for fetch_quote.py and check_stock.fetcher.fetch_quote."""
 
 import json
 import logging
@@ -10,6 +10,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 import fetch_quote
+from check_stock.fetcher import fetch_quote as fetch_quote_fn
 
 
 @pytest.fixture(autouse=True)
@@ -33,6 +34,118 @@ SAMPLE_QUOTE = {
     "week_52_high": 230.00,
     "week_52_low": 151.61,
 }
+
+
+# ── fetch_quote (library) ─────────────────────────────────────────────────────
+
+
+def _make_info(**kwargs):
+    defaults = {
+        "currentPrice": 207.67,
+        "previousClose": 209.53,
+        "currency": "USD",
+        "longName": "Amazon.com, Inc.",
+        "regularMarketVolume": 35_000_000,
+        "marketCap": 2_200_000_000_000,
+        "trailingPE": 29.0,
+        "fiftyTwoWeekHigh": 258.6,
+        "fiftyTwoWeekLow": 161.38,
+    }
+    defaults.update(kwargs)
+    return defaults
+
+
+class TestFetchQuote:
+    def test_returns_expected_fields(self):
+        with patch("yfinance.Ticker") as mock_ticker:
+            mock_ticker.return_value.info = _make_info()
+            result = fetch_quote_fn("AMZN", "NASDAQ")
+
+        assert result["symbol"] == "AMZN"
+        assert result["market"] == "NASDAQ"
+        assert "fetched_at" in result
+        assert set(result.keys()) == {
+            "symbol",
+            "market",
+            "fetched_at",
+            "name",
+            "price",
+            "currency",
+            "change",
+            "change_percent",
+            "volume",
+            "market_cap",
+            "pe_ratio",
+            "week_52_high",
+            "week_52_low",
+        }
+
+    def test_computes_change_from_previous_close(self):
+        with patch("yfinance.Ticker") as mock_ticker:
+            mock_ticker.return_value.info = _make_info(currentPrice=210.0, previousClose=200.0)
+            result = fetch_quote_fn("AMZN", None)
+
+        assert result["change"] == pytest.approx(10.0, abs=0.01)
+        assert result["change_percent"] == pytest.approx(5.0, abs=0.01)
+
+    def test_change_is_none_when_price_missing(self):
+        with patch("yfinance.Ticker") as mock_ticker:
+            mock_ticker.return_value.info = _make_info(currentPrice=None, regularMarketPrice=None)
+            result = fetch_quote_fn("AMZN", None)
+
+        assert result["change"] is None
+        assert result["change_percent"] is None
+
+    def test_falls_back_to_regular_market_price(self):
+        with patch("yfinance.Ticker") as mock_ticker:
+            mock_ticker.return_value.info = _make_info(currentPrice=None, regularMarketPrice=195.0)
+            result = fetch_quote_fn("AMZN", None)
+
+        assert result["price"] == pytest.approx(195.0)
+
+    def test_uses_long_name(self):
+        with patch("yfinance.Ticker") as mock_ticker:
+            mock_ticker.return_value.info = _make_info(
+                longName="Amazon.com, Inc.", shortName="Amazon"
+            )
+            result = fetch_quote_fn("AMZN", None)
+
+        assert result["name"] == "Amazon.com, Inc."
+
+    def test_falls_back_to_short_name(self):
+        with patch("yfinance.Ticker") as mock_ticker:
+            mock_ticker.return_value.info = _make_info(longName=None, shortName="Amazon")
+            result = fetch_quote_fn("AMZN", None)
+
+        assert result["name"] == "Amazon"
+
+    def test_none_fields_when_info_missing(self):
+        with patch("yfinance.Ticker") as mock_ticker:
+            mock_ticker.return_value.info = {}
+            result = fetch_quote_fn("AMZN", None)
+
+        assert result["price"] is None
+        assert result["pe_ratio"] is None
+        assert result["market_cap"] is None
+        assert result["week_52_high"] is None
+        assert result["week_52_low"] is None
+
+    def test_volume_is_int(self):
+        with patch("yfinance.Ticker") as mock_ticker:
+            mock_ticker.return_value.info = _make_info()
+            result = fetch_quote_fn("AMZN", None)
+
+        assert isinstance(result["volume"], int)
+
+    def test_market_cap_is_int(self):
+        with patch("yfinance.Ticker") as mock_ticker:
+            mock_ticker.return_value.info = _make_info()
+            result = fetch_quote_fn("AMZN", None)
+
+        assert isinstance(result["market_cap"], int)
+
+
+# ── main (script) ─────────────────────────────────────────────────────────────
 
 
 class TestMain:
