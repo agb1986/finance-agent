@@ -59,7 +59,16 @@ def format_portfolio(summary: dict, positions: list[dict], fetched_at: str) -> s
         lines.append(f"### Open Positions ({len(positions)})")
         lines.append("")
 
-        headers = ["Name", "ISIN", "Date Bought", "Shares", "Price", "Total Cost", "Current Value", "P&L"]
+        headers = [
+            "Name",
+            "ISIN",
+            "Date Bought",
+            "Shares",
+            "Price",
+            "Total Cost",
+            "Current Value",
+            "P&L",
+        ]
         col_w = [30, 14, 12, 10, 10, 13, 15, 14]
 
         header_row = "  " + "  ".join(h.ljust(w) for h, w in zip(headers, col_w))
@@ -88,7 +97,7 @@ def format_portfolio(summary: dict, positions: list[dict], fetched_at: str) -> s
             pnl_sign = "+" if pnl >= 0 else ""
 
             row = (
-                f"  {name[:col_w[0]]:<{col_w[0]}}"
+                f"  {name[: col_w[0]]:<{col_w[0]}}"
                 f"  {isin:<{col_w[1]}}"
                 f"  {date_bought:<{col_w[2]}}"
                 f"  {qty:<{col_w[3]}.4f}"

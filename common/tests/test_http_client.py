@@ -86,3 +86,47 @@ class TestHttpClientGet:
 
         assert isinstance(result, list)
         assert len(result) == 2
+
+
+class TestHttpClientPost:
+    def _client(self) -> HttpClient:
+        return HttpClient("https://example.com")
+
+    def test_returns_parsed_json(self):
+        client = self._client()
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"code": 0, "result": {}}
+        with patch.object(client.session, "post", return_value=mock_response) as mock_post:
+            result = client.post("/some/path", json={"method": "test"})
+
+        mock_post.assert_called_once_with(
+            "https://example.com/some/path", json={"method": "test"}, timeout=30
+        )
+        assert result == {"code": 0, "result": {}}
+
+    def test_leading_slash_on_path_handled(self):
+        client = self._client()
+        mock_response = MagicMock()
+        mock_response.json.return_value = {}
+        with patch.object(client.session, "post", return_value=mock_response) as mock_post:
+            client.post("/api/v1/private/method", json={})
+
+        url_called = mock_post.call_args[0][0]
+        assert url_called == "https://example.com/api/v1/private/method"
+
+    def test_raises_on_http_error(self):
+        client = self._client()
+        mock_response = MagicMock()
+        mock_response.raise_for_status.side_effect = requests.HTTPError("401")
+        with patch.object(client.session, "post", return_value=mock_response):
+            with pytest.raises(requests.HTTPError):
+                client.post("/private")
+
+    def test_none_body_allowed(self):
+        client = self._client()
+        mock_response = MagicMock()
+        mock_response.json.return_value = {}
+        with patch.object(client.session, "post", return_value=mock_response) as mock_post:
+            client.post("/path")
+
+        assert mock_post.call_args[1]["json"] is None

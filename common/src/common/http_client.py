@@ -32,3 +32,16 @@ class HttpClient:
         response = self.session.get(url, params=params, timeout=self.timeout)
         response.raise_for_status()
         return response.json()
+
+    def post(self, path: str, json: dict | None = None) -> dict | list:
+        """Perform a POST request with a JSON body and return the parsed JSON response.
+
+        Raises:
+            requests.HTTPError: If the server returns a 4xx or 5xx status code.
+        """
+        url = f"{self.base_url}/{path.lstrip('/')}"
+        logger = get_logger()
+        logger.debug(f"POST {url}")
+        response = self.session.post(url, json=json, timeout=self.timeout)
+        response.raise_for_status()
+        return response.json()

@@ -146,7 +146,11 @@ class TestFormatPortfolio:
     def test_unrealised_ppl_negative_no_plus_sign(self):
         summary = {
             "totalValue": 950.0,
-            "investments": {"totalCost": 1000.0, "unrealizedProfitLoss": -50.0, "realizedProfitLoss": 0.0},
+            "investments": {
+                "totalCost": 1000.0,
+                "unrealizedProfitLoss": -50.0,
+                "realizedProfitLoss": 0.0,
+            },
         }
         output = format_portfolio(summary, [], "2026-03-17T10:00:00Z")
         assert "-50.00" in output
@@ -256,7 +260,10 @@ class TestMain:
 
     def test_api_credentials_passed_to_make_client(self, tmp_path):
         with (
-            patch.dict("os.environ", {"TRADING_212_API_KEY": "my-key", "TRADING_212_API_SECRET": "my-secret"}),
+            patch.dict(
+                "os.environ",
+                {"TRADING_212_API_KEY": "my-key", "TRADING_212_API_SECRET": "my-secret"},
+            ),
             patch.object(fetch_portfolio, "TMP_DIR", tmp_path),
             patch("get_stock_profilio_fetch_portfolio.make_client") as mock_make,
             patch(
