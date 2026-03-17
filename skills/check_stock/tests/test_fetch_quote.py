@@ -174,7 +174,9 @@ class TestMain:
     def test_passes_market_to_fetcher(self, tmp_path):
         with (
             patch.object(fetch_quote, "TMP_DIR", tmp_path),
-            patch("check_stock_fetch_quote.fetch_quote_data", return_value=SAMPLE_QUOTE) as mock_fetch,
+            patch(
+                "check_stock_fetch_quote.fetch_quote_data", return_value=SAMPLE_QUOTE
+            ) as mock_fetch,
         ):
             with patch("sys.argv", ["fetch_quote.py", "--symbol", "AMZN", "--market", "NASDAQ"]):
                 fetch_quote.main()
@@ -184,7 +186,9 @@ class TestMain:
     def test_symbol_uppercased(self, tmp_path):
         with (
             patch.object(fetch_quote, "TMP_DIR", tmp_path),
-            patch("check_stock_fetch_quote.fetch_quote_data", return_value=SAMPLE_QUOTE) as mock_fetch,
+            patch(
+                "check_stock_fetch_quote.fetch_quote_data", return_value=SAMPLE_QUOTE
+            ) as mock_fetch,
         ):
             with patch("sys.argv", ["fetch_quote.py", "--symbol", "amzn"]):
                 fetch_quote.main()
@@ -194,7 +198,9 @@ class TestMain:
     def test_exits_on_not_implemented(self, tmp_path):
         with (
             patch.object(fetch_quote, "TMP_DIR", tmp_path),
-            patch("check_stock_fetch_quote.fetch_quote_data", side_effect=NotImplementedError("stub")),
+            patch(
+                "check_stock_fetch_quote.fetch_quote_data", side_effect=NotImplementedError("stub")
+            ),
         ):
             with patch("sys.argv", ["fetch_quote.py", "--symbol", "AMZN"]):
                 with pytest.raises(SystemExit) as exc_info:
@@ -205,7 +211,9 @@ class TestMain:
     def test_exits_on_fetch_error(self, tmp_path):
         with (
             patch.object(fetch_quote, "TMP_DIR", tmp_path),
-            patch("check_stock_fetch_quote.fetch_quote_data", side_effect=RuntimeError("API error")),
+            patch(
+                "check_stock_fetch_quote.fetch_quote_data", side_effect=RuntimeError("API error")
+            ),
         ):
             with patch("sys.argv", ["fetch_quote.py", "--symbol", "AMZN"]):
                 with pytest.raises(SystemExit) as exc_info:
@@ -223,7 +231,9 @@ class TestMain:
     def test_no_file_written_on_error(self, tmp_path):
         with (
             patch.object(fetch_quote, "TMP_DIR", tmp_path),
-            patch("check_stock_fetch_quote.fetch_quote_data", side_effect=RuntimeError("API error")),
+            patch(
+                "check_stock_fetch_quote.fetch_quote_data", side_effect=RuntimeError("API error")
+            ),
         ):
             with patch("sys.argv", ["fetch_quote.py", "--symbol", "AMZN"]):
                 with pytest.raises(SystemExit):

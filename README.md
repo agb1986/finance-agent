@@ -83,6 +83,41 @@ Fetches the latest financial news from 10 RSS feeds (MarketWatch, Yahoo Finance,
 
 ---
 
+### `/get-stock-profilio`
+
+Fetches the user's Trading212 equity portfolio — account summary and all open positions — via the Trading212 API.
+
+**Usage**
+
+```
+/get-stock-profilio
+```
+
+No arguments. Requires `TRADING_212_API_KEY` and `TRADING_212_API_SECRET` environment variables.
+
+**What it returns**
+
+- Account summary: currency, total value, invested amount, unrealised and realised P&L
+- Open positions table: name, ISIN, date bought, shares, current price, total cost, current value, P&L
+- Raw JSON file written to `tmp/`
+
+---
+
+### `/financial-news` — scoring filter
+
+The `analyze_news.py` script now accepts `--min-semantic` and `--min-keyword` flags to pre-filter articles before writing output, eliminating ad-hoc filtering steps.
+
+```
+/financial-news --min-semantic 0.40
+```
+
+| Argument         | Required | Default | Description                                    |
+|------------------|----------|---------|------------------------------------------------|
+| `--min-semantic` | No       | —       | Only include articles with semantic score ≥ N  |
+| `--min-keyword`  | No       | —       | Only include articles with keyword score ≥ N   |
+
+---
+
 ## Setup
 
 ### Prerequisites
@@ -111,7 +146,7 @@ uv run python --version
 test -d .venv && echo "venv OK"
 
 # Key packages
-uv run python -c "import check_stock, check_crypto, financial_news, common" && echo "All packages OK"
+uv run python -c "import check_stock, check_crypto, financial_news, get_stock_profilio, common" && echo "All packages OK"
 ```
 
 ---
@@ -144,7 +179,8 @@ finance-agent/
 ├── skills/
 │   ├── check_stock/           # Yahoo Finance — quotes, history, charts
 │   ├── check_crypto/          # CoinGecko — quotes, history, charts
-│   └── financial_news/        # RSS news fetch + semantic ranking
+│   ├── financial_news/        # RSS news fetch + semantic ranking
+│   └── get_stock_profilio/    # Trading212 portfolio — account summary + positions
 └── pyproject.toml             # uv workspace root
 ```
 

@@ -88,12 +88,14 @@ Keywords are matched case-insensitively against each article's title and summary
 ### Step 2 — Run the analysis script
 
 ```bash
-uv run skills/financial_news/scripts/analyze_news.py
+uv run skills/financial_news/scripts/analyze_news.py --min-semantic 0.40
 ```
 
 Optional arguments:
 - `--input path/to/news_results.json` — analyse a specific fetch result instead of the most recent
 - `--config path/to/keywords.json` — use an alternative keywords config
+- `--min-semantic SCORE` — only include articles with semantic_score >= SCORE (default: no filter)
+- `--min-keyword SCORE` — only include articles with keyword_score >= SCORE (default: no filter)
 
 The script will print the path to the output file on stdout, e.g.:
 ```

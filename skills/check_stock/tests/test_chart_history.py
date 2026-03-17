@@ -212,7 +212,9 @@ class TestMain:
             patch.object(chart_history, "TMP_DIR", tmp_path),
             patch("check_stock_chart_history.chart_to_console"),
             patch("check_stock_chart_history.chart_to_notebook"),
-            patch("check_stock_chart_history.find_latest_history", return_value=history) as mock_find,
+            patch(
+                "check_stock_chart_history.find_latest_history", return_value=history
+            ) as mock_find,
             patch("sys.argv", ["chart_history.py"]),
         ):
             chart_history.main()
@@ -247,7 +249,10 @@ class TestMain:
         with (
             patch.object(chart_history, "TMP_DIR", tmp_path),
             patch("check_stock_chart_history.chart_to_console"),
-            patch("check_stock_chart_history.chart_to_notebook", side_effect=RuntimeError("render error")),
+            patch(
+                "check_stock_chart_history.chart_to_notebook",
+                side_effect=RuntimeError("render error"),
+            ),
             patch("sys.argv", ["chart_history.py", "--input", str(history)]),
         ):
             with pytest.raises(SystemExit) as exc_info:

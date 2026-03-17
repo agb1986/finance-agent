@@ -152,7 +152,9 @@ class TestMain:
     def test_coin_lowercased(self, tmp_path):
         with (
             patch.object(fetch_quote, "TMP_DIR", tmp_path),
-            patch("check_crypto_fetch_quote.fetch_quote_data", return_value=SAMPLE_QUOTE) as mock_fetch,
+            patch(
+                "check_crypto_fetch_quote.fetch_quote_data", return_value=SAMPLE_QUOTE
+            ) as mock_fetch,
         ):
             with patch("sys.argv", ["fetch_quote.py", "--coin", "Bitcoin"]):
                 fetch_quote.main()
@@ -173,7 +175,9 @@ class TestMain:
     def test_exits_on_generic_error(self, tmp_path):
         with (
             patch.object(fetch_quote, "TMP_DIR", tmp_path),
-            patch("check_crypto_fetch_quote.fetch_quote_data", side_effect=RuntimeError("API error")),
+            patch(
+                "check_crypto_fetch_quote.fetch_quote_data", side_effect=RuntimeError("API error")
+            ),
         ):
             with patch("sys.argv", ["fetch_quote.py", "--coin", "bitcoin"]):
                 with pytest.raises(SystemExit) as exc_info:
@@ -191,7 +195,9 @@ class TestMain:
     def test_no_file_written_on_error(self, tmp_path):
         with (
             patch.object(fetch_quote, "TMP_DIR", tmp_path),
-            patch("check_crypto_fetch_quote.fetch_quote_data", side_effect=RuntimeError("API error")),
+            patch(
+                "check_crypto_fetch_quote.fetch_quote_data", side_effect=RuntimeError("API error")
+            ),
         ):
             with patch("sys.argv", ["fetch_quote.py", "--coin", "bitcoin"]):
                 with pytest.raises(SystemExit):
