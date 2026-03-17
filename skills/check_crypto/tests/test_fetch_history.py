@@ -124,7 +124,9 @@ class TestMain:
     def test_coin_lowercased(self, tmp_path):
         with (
             patch.object(fetch_history, "TMP_DIR", tmp_path),
-            patch("check_crypto_fetch_history.fetch_history_data", return_value=SAMPLE_RESULT) as mock_fn,
+            patch(
+                "check_crypto_fetch_history.fetch_history_data", return_value=SAMPLE_RESULT
+            ) as mock_fn,
             patch("sys.argv", ["fetch_history.py", "--coin", "Bitcoin"]),
         ):
             fetch_history.main()
@@ -134,7 +136,9 @@ class TestMain:
     def test_default_days(self, tmp_path):
         with (
             patch.object(fetch_history, "TMP_DIR", tmp_path),
-            patch("check_crypto_fetch_history.fetch_history_data", return_value=SAMPLE_RESULT) as mock_fn,
+            patch(
+                "check_crypto_fetch_history.fetch_history_data", return_value=SAMPLE_RESULT
+            ) as mock_fn,
             patch("sys.argv", ["fetch_history.py", "--coin", "bitcoin"]),
         ):
             fetch_history.main()
@@ -144,7 +148,9 @@ class TestMain:
     def test_custom_days(self, tmp_path):
         with (
             patch.object(fetch_history, "TMP_DIR", tmp_path),
-            patch("check_crypto_fetch_history.fetch_history_data", return_value=SAMPLE_RESULT) as mock_fn,
+            patch(
+                "check_crypto_fetch_history.fetch_history_data", return_value=SAMPLE_RESULT
+            ) as mock_fn,
             patch("sys.argv", ["fetch_history.py", "--coin", "bitcoin", "--days", "90"]),
         ):
             fetch_history.main()
@@ -154,7 +160,9 @@ class TestMain:
     def test_exits_on_value_error(self, tmp_path):
         with (
             patch.object(fetch_history, "TMP_DIR", tmp_path),
-            patch("check_crypto_fetch_history.fetch_history_data", side_effect=ValueError("not found")),
+            patch(
+                "check_crypto_fetch_history.fetch_history_data", side_effect=ValueError("not found")
+            ),
             patch("sys.argv", ["fetch_history.py", "--coin", "bitcoin"]),
         ):
             with pytest.raises(SystemExit) as exc_info:
@@ -165,7 +173,10 @@ class TestMain:
     def test_exits_on_unexpected_error(self, tmp_path):
         with (
             patch.object(fetch_history, "TMP_DIR", tmp_path),
-            patch("check_crypto_fetch_history.fetch_history_data", side_effect=RuntimeError("network error")),
+            patch(
+                "check_crypto_fetch_history.fetch_history_data",
+                side_effect=RuntimeError("network error"),
+            ),
             patch("sys.argv", ["fetch_history.py", "--coin", "bitcoin"]),
         ):
             with pytest.raises(SystemExit) as exc_info:

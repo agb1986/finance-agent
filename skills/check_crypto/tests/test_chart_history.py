@@ -165,7 +165,10 @@ class TestMain:
         with (
             patch.object(chart_history, "TMP_DIR", tmp_path),
             patch("check_crypto_chart_history.render_ascii_chart"),
-            patch("check_crypto_chart_history.write_notebook", side_effect=RuntimeError("render error")),
+            patch(
+                "check_crypto_chart_history.write_notebook",
+                side_effect=RuntimeError("render error"),
+            ),
             patch("sys.argv", ["chart_history.py", "--input", str(history)]),
         ):
             with pytest.raises(SystemExit) as exc_info:

@@ -175,7 +175,9 @@ class TestMain:
     def test_symbol_uppercased(self, tmp_path):
         with (
             patch.object(fetch_history, "TMP_DIR", tmp_path),
-            patch("check_stock_fetch_history.fetch_history_data", return_value=SAMPLE_RESULT) as mock_fn,
+            patch(
+                "check_stock_fetch_history.fetch_history_data", return_value=SAMPLE_RESULT
+            ) as mock_fn,
             patch("sys.argv", ["fetch_history.py", "--symbol", "amzn"]),
         ):
             fetch_history.main()
@@ -185,7 +187,9 @@ class TestMain:
     def test_default_period(self, tmp_path):
         with (
             patch.object(fetch_history, "TMP_DIR", tmp_path),
-            patch("check_stock_fetch_history.fetch_history_data", return_value=SAMPLE_RESULT) as mock_fn,
+            patch(
+                "check_stock_fetch_history.fetch_history_data", return_value=SAMPLE_RESULT
+            ) as mock_fn,
             patch("sys.argv", ["fetch_history.py", "--symbol", "AMZN"]),
         ):
             fetch_history.main()
@@ -195,7 +199,9 @@ class TestMain:
     def test_custom_period(self, tmp_path):
         with (
             patch.object(fetch_history, "TMP_DIR", tmp_path),
-            patch("check_stock_fetch_history.fetch_history_data", return_value=SAMPLE_RESULT) as mock_fn,
+            patch(
+                "check_stock_fetch_history.fetch_history_data", return_value=SAMPLE_RESULT
+            ) as mock_fn,
             patch("sys.argv", ["fetch_history.py", "--symbol", "AMZN", "--period", "6mo"]),
         ):
             fetch_history.main()
@@ -205,7 +211,9 @@ class TestMain:
     def test_passes_market(self, tmp_path):
         with (
             patch.object(fetch_history, "TMP_DIR", tmp_path),
-            patch("check_stock_fetch_history.fetch_history_data", return_value=SAMPLE_RESULT) as mock_fn,
+            patch(
+                "check_stock_fetch_history.fetch_history_data", return_value=SAMPLE_RESULT
+            ) as mock_fn,
             patch("sys.argv", ["fetch_history.py", "--symbol", "AMZN", "--market", "NASDAQ"]),
         ):
             fetch_history.main()
@@ -215,7 +223,9 @@ class TestMain:
     def test_exits_on_value_error(self, tmp_path):
         with (
             patch.object(fetch_history, "TMP_DIR", tmp_path),
-            patch("check_stock_fetch_history.fetch_history_data", side_effect=ValueError("bad period")),
+            patch(
+                "check_stock_fetch_history.fetch_history_data", side_effect=ValueError("bad period")
+            ),
             patch("sys.argv", ["fetch_history.py", "--symbol", "AMZN"]),
         ):
             with pytest.raises(SystemExit) as exc_info:
@@ -226,7 +236,10 @@ class TestMain:
     def test_exits_on_unexpected_error(self, tmp_path):
         with (
             patch.object(fetch_history, "TMP_DIR", tmp_path),
-            patch("check_stock_fetch_history.fetch_history_data", side_effect=RuntimeError("network error")),
+            patch(
+                "check_stock_fetch_history.fetch_history_data",
+                side_effect=RuntimeError("network error"),
+            ),
             patch("sys.argv", ["fetch_history.py", "--symbol", "AMZN"]),
         ):
             with pytest.raises(SystemExit) as exc_info:
