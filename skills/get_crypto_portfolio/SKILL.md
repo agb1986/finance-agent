@@ -1,5 +1,5 @@
 ---
-name: get-crypto-profilio
+name: get-crypto-portfolio
 version: 0.1.0
 description: Fetches the user's Crypto.com Exchange portfolio — account balance and open positions. Use when the user asks about their crypto portfolio, balances, or open positions.
 ---
@@ -41,7 +41,7 @@ uv run python --version
 test -d .venv && echo "venv OK" || echo "ERROR: .venv not found"
 
 # Required packages are importable
-uv run python -c "import get_crypto_profilio, requests, common" && echo "All packages OK"
+uv run python -c "import get_crypto_portfolio, requests, common" && echo "All packages OK"
 
 # API credentials are set
 test -n "$CRYPTO_API_KEY" && echo "API key OK" || echo "ERROR: CRYPTO_API_KEY not set"
@@ -53,13 +53,13 @@ test -n "$CRYPTO_API_SECRET" && echo "API secret OK" || echo "ERROR: CRYPTO_API_
 ### Step 1 — Fetch portfolio
 
 ```bash
-uv run skills/get_crypto_profilio/scripts/fetch_portfolio.py
+uv run skills/get_crypto_portfolio/scripts/fetch_portfolio.py
 ```
 
 The script prints the path to the output JSON file, followed by a human-readable report:
 
 ```
-skills/get_crypto_profilio/tmp/portfolio_20260317_100000.json
+skills/get_crypto_portfolio/tmp/portfolio_20260317_100000.json
 
 ## Crypto.com Portfolio — 2026-03-17
 

@@ -10,15 +10,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
-from get_stock_profilio.client import fetch_account_summary, fetch_positions, make_client
-from get_stock_profilio.formatter import format_portfolio
+from get_stock_portfolio.client import fetch_account_summary, fetch_positions, make_client
+from get_stock_portfolio.formatter import format_portfolio
 
 _spec = importlib.util.spec_from_file_location(
-    "get_stock_profilio_fetch_portfolio",
+    "get_stock_portfolio_fetch_portfolio",
     Path(__file__).parent.parent / "scripts" / "fetch_portfolio.py",
 )
 fetch_portfolio = importlib.util.module_from_spec(_spec)
-sys.modules["get_stock_profilio_fetch_portfolio"] = fetch_portfolio
+sys.modules["get_stock_portfolio_fetch_portfolio"] = fetch_portfolio
 _spec.loader.exec_module(fetch_portfolio)
 
 
@@ -228,13 +228,13 @@ class TestMain:
         with (
             patch.dict("os.environ", ENV_WITH_CREDS),
             patch.object(fetch_portfolio, "TMP_DIR", tmp_path),
-            patch("get_stock_profilio_fetch_portfolio.make_client") as mock_make,
+            patch("get_stock_portfolio_fetch_portfolio.make_client") as mock_make,
             patch(
-                "get_stock_profilio_fetch_portfolio.fetch_account_summary",
+                "get_stock_portfolio_fetch_portfolio.fetch_account_summary",
                 return_value=SAMPLE_SUMMARY,
             ),
             patch(
-                "get_stock_profilio_fetch_portfolio.fetch_positions",
+                "get_stock_portfolio_fetch_portfolio.fetch_positions",
                 return_value=SAMPLE_POSITIONS,
             ),
         ):
@@ -265,13 +265,13 @@ class TestMain:
                 {"TRADING_212_API_KEY": "my-key", "TRADING_212_API_SECRET": "my-secret"},
             ),
             patch.object(fetch_portfolio, "TMP_DIR", tmp_path),
-            patch("get_stock_profilio_fetch_portfolio.make_client") as mock_make,
+            patch("get_stock_portfolio_fetch_portfolio.make_client") as mock_make,
             patch(
-                "get_stock_profilio_fetch_portfolio.fetch_account_summary",
+                "get_stock_portfolio_fetch_portfolio.fetch_account_summary",
                 return_value=SAMPLE_SUMMARY,
             ),
             patch(
-                "get_stock_profilio_fetch_portfolio.fetch_positions",
+                "get_stock_portfolio_fetch_portfolio.fetch_positions",
                 return_value=SAMPLE_POSITIONS,
             ),
         ):
@@ -285,9 +285,9 @@ class TestMain:
         with (
             patch.dict("os.environ", ENV_WITH_CREDS),
             patch.object(fetch_portfolio, "TMP_DIR", tmp_path),
-            patch("get_stock_profilio_fetch_portfolio.make_client") as mock_make,
+            patch("get_stock_portfolio_fetch_portfolio.make_client") as mock_make,
             patch(
-                "get_stock_profilio_fetch_portfolio.fetch_account_summary",
+                "get_stock_portfolio_fetch_portfolio.fetch_account_summary",
                 side_effect=requests.HTTPError("401"),
             ),
         ):
@@ -302,9 +302,9 @@ class TestMain:
         with (
             patch.dict("os.environ", ENV_WITH_CREDS),
             patch.object(fetch_portfolio, "TMP_DIR", tmp_path),
-            patch("get_stock_profilio_fetch_portfolio.make_client") as mock_make,
+            patch("get_stock_portfolio_fetch_portfolio.make_client") as mock_make,
             patch(
-                "get_stock_profilio_fetch_portfolio.fetch_account_summary",
+                "get_stock_portfolio_fetch_portfolio.fetch_account_summary",
                 side_effect=RuntimeError("network error"),
             ),
         ):
@@ -320,13 +320,13 @@ class TestMain:
         with (
             patch.dict("os.environ", ENV_WITH_CREDS),
             patch.object(fetch_portfolio, "TMP_DIR", nested),
-            patch("get_stock_profilio_fetch_portfolio.make_client") as mock_make,
+            patch("get_stock_portfolio_fetch_portfolio.make_client") as mock_make,
             patch(
-                "get_stock_profilio_fetch_portfolio.fetch_account_summary",
+                "get_stock_portfolio_fetch_portfolio.fetch_account_summary",
                 return_value=SAMPLE_SUMMARY,
             ),
             patch(
-                "get_stock_profilio_fetch_portfolio.fetch_positions",
+                "get_stock_portfolio_fetch_portfolio.fetch_positions",
                 return_value=SAMPLE_POSITIONS,
             ),
         ):

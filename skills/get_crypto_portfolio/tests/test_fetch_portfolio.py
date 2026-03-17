@@ -11,21 +11,21 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
-from get_crypto_profilio.client import (
+from get_crypto_portfolio.client import (
     _extract_result,
     _sign_request,
     fetch_positions,
     fetch_user_balance,
     make_client,
 )
-from get_crypto_profilio.formatter import _fmt_float, format_portfolio
+from get_crypto_portfolio.formatter import _fmt_float, format_portfolio
 
 _spec = importlib.util.spec_from_file_location(
-    "get_crypto_profilio_fetch_portfolio",
+    "get_crypto_portfolio_fetch_portfolio",
     Path(__file__).parent.parent / "scripts" / "fetch_portfolio.py",
 )
 fetch_portfolio = importlib.util.module_from_spec(_spec)
-sys.modules["get_crypto_profilio_fetch_portfolio"] = fetch_portfolio
+sys.modules["get_crypto_portfolio_fetch_portfolio"] = fetch_portfolio
 _spec.loader.exec_module(fetch_portfolio)
 
 
@@ -290,13 +290,13 @@ class TestMain:
         with (
             patch.dict("os.environ", ENV_WITH_CREDS),
             patch.object(fetch_portfolio, "TMP_DIR", tmp_path),
-            patch("get_crypto_profilio_fetch_portfolio.make_client") as mock_make,
+            patch("get_crypto_portfolio_fetch_portfolio.make_client") as mock_make,
             patch(
-                "get_crypto_profilio_fetch_portfolio.fetch_user_balance",
+                "get_crypto_portfolio_fetch_portfolio.fetch_user_balance",
                 return_value=SAMPLE_BALANCES,
             ),
             patch(
-                "get_crypto_profilio_fetch_portfolio.fetch_positions",
+                "get_crypto_portfolio_fetch_portfolio.fetch_positions",
                 return_value=SAMPLE_POSITIONS,
             ),
         ):
@@ -326,13 +326,13 @@ class TestMain:
                 "os.environ", {"CRYPTO_API_KEY": "my-key", "CRYPTO_API_SECRET": "my-secret"}
             ),
             patch.object(fetch_portfolio, "TMP_DIR", tmp_path),
-            patch("get_crypto_profilio_fetch_portfolio.make_client") as mock_make,
+            patch("get_crypto_portfolio_fetch_portfolio.make_client") as mock_make,
             patch(
-                "get_crypto_profilio_fetch_portfolio.fetch_user_balance",
+                "get_crypto_portfolio_fetch_portfolio.fetch_user_balance",
                 return_value=SAMPLE_BALANCES,
             ) as mock_balance,
             patch(
-                "get_crypto_profilio_fetch_portfolio.fetch_positions",
+                "get_crypto_portfolio_fetch_portfolio.fetch_positions",
                 return_value=SAMPLE_POSITIONS,
             ) as mock_positions,
         ):
@@ -347,9 +347,9 @@ class TestMain:
         with (
             patch.dict("os.environ", ENV_WITH_CREDS),
             patch.object(fetch_portfolio, "TMP_DIR", tmp_path),
-            patch("get_crypto_profilio_fetch_portfolio.make_client") as mock_make,
+            patch("get_crypto_portfolio_fetch_portfolio.make_client") as mock_make,
             patch(
-                "get_crypto_profilio_fetch_portfolio.fetch_user_balance",
+                "get_crypto_portfolio_fetch_portfolio.fetch_user_balance",
                 side_effect=requests.HTTPError("401"),
             ),
         ):
@@ -364,9 +364,9 @@ class TestMain:
         with (
             patch.dict("os.environ", ENV_WITH_CREDS),
             patch.object(fetch_portfolio, "TMP_DIR", tmp_path),
-            patch("get_crypto_profilio_fetch_portfolio.make_client") as mock_make,
+            patch("get_crypto_portfolio_fetch_portfolio.make_client") as mock_make,
             patch(
-                "get_crypto_profilio_fetch_portfolio.fetch_user_balance",
+                "get_crypto_portfolio_fetch_portfolio.fetch_user_balance",
                 side_effect=RuntimeError("API error"),
             ),
         ):
@@ -382,13 +382,13 @@ class TestMain:
         with (
             patch.dict("os.environ", ENV_WITH_CREDS),
             patch.object(fetch_portfolio, "TMP_DIR", nested),
-            patch("get_crypto_profilio_fetch_portfolio.make_client") as mock_make,
+            patch("get_crypto_portfolio_fetch_portfolio.make_client") as mock_make,
             patch(
-                "get_crypto_profilio_fetch_portfolio.fetch_user_balance",
+                "get_crypto_portfolio_fetch_portfolio.fetch_user_balance",
                 return_value=SAMPLE_BALANCES,
             ),
             patch(
-                "get_crypto_profilio_fetch_portfolio.fetch_positions",
+                "get_crypto_portfolio_fetch_portfolio.fetch_positions",
                 return_value=SAMPLE_POSITIONS,
             ),
         ):

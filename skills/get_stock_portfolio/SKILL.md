@@ -1,5 +1,5 @@
 ---
-name: get-stock-profilio
+name: get-stock-portfolio
 version: 0.1.0
 description: Fetches the user's Trading212 stock portfolio — account summary and open positions. Use when the user asks about their portfolio, account value, positions, or P&L.
 ---
@@ -41,7 +41,7 @@ uv run python --version
 test -d .venv && echo "venv OK" || echo "ERROR: .venv not found"
 
 # Required packages are importable
-uv run python -c "import get_stock_profilio, requests, common" && echo "All packages OK"
+uv run python -c "import get_stock_portfolio, requests, common" && echo "All packages OK"
 
 # API credentials are set
 test -n "$TRADING_212_API_KEY" && echo "API key OK" || echo "ERROR: TRADING_212_API_KEY not set"
@@ -53,13 +53,13 @@ test -n "$TRADING_212_API_SECRET" && echo "API secret OK" || echo "ERROR: TRADIN
 ### Step 1 — Fetch portfolio
 
 ```bash
-uv run skills/get_stock_profilio/scripts/fetch_portfolio.py
+uv run skills/get_stock_portfolio/scripts/fetch_portfolio.py
 ```
 
 The script prints the path to the output JSON file, followed by a human-readable report:
 
 ```
-skills/get_stock_profilio/tmp/portfolio_20260317_100000.json
+skills/get_stock_portfolio/tmp/portfolio_20260317_100000.json
 
 ## Trading212 Portfolio — 2026-03-17
 

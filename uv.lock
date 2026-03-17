@@ -20,8 +20,8 @@ members = [
     "common",
     "finance-agent",
     "financial-news",
-    "get-crypto-profilio",
-    "get-stock-profilio",
+    "get-crypto-portfolio",
+    "get-stock-portfolio",
 ]
 
 [[package]]
@@ -728,9 +728,9 @@ wheels = [
 ]
 
 [[package]]
-name = "get-crypto-profilio"
+name = "get-crypto-portfolio"
 version = "0.1.0"
-source = { editable = "skills/get_crypto_profilio" }
+source = { editable = "skills/get_crypto_portfolio" }
 dependencies = [
     { name = "common" },
     { name = "requests" },
@@ -755,9 +755,9 @@ dev = [
 ]
 
 [[package]]
-name = "get-stock-profilio"
+name = "get-stock-portfolio"
 version = "0.1.0"
-source = { editable = "skills/get_stock_profilio" }
+source = { editable = "skills/get_stock_portfolio" }
 dependencies = [
     { name = "common" },
     { name = "requests" },

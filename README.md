@@ -83,14 +83,14 @@ Fetches the latest financial news from 10 RSS feeds (MarketWatch, Yahoo Finance,
 
 ---
 
-### `/get-stock-profilio`
+### `/get-stock-portfolio`
 
 Fetches the user's Trading212 equity portfolio — account summary and all open positions — via the Trading212 API.
 
 **Usage**
 
 ```
-/get-stock-profilio
+/get-stock-portfolio
 ```
 
 No arguments. Requires `TRADING_212_API_KEY` and `TRADING_212_API_SECRET` environment variables.
@@ -99,6 +99,26 @@ No arguments. Requires `TRADING_212_API_KEY` and `TRADING_212_API_SECRET` enviro
 
 - Account summary: currency, total value, invested amount, unrealised and realised P&L
 - Open positions table: name, ISIN, date bought, shares, current price, total cost, current value, P&L
+- Raw JSON file written to `tmp/`
+
+---
+
+### `/get-crypto-portfolio`
+
+Fetches the user's Crypto.com Exchange portfolio — account balance and all open positions — via the Crypto.com private REST API.
+
+**Usage**
+
+```
+/get-crypto-portfolio
+```
+
+No arguments. Requires `CRYPTO_API_KEY` and `CRYPTO_API_SECRET` environment variables.
+
+**What it returns**
+
+- Account balance table: currency, cash balance, margin balance, available balance, unrealised and realised PnL
+- Open positions table: instrument, type, quantity, cost, unrealised PnL, realised PnL
 - Raw JSON file written to `tmp/`
 
 ---
@@ -146,7 +166,7 @@ uv run python --version
 test -d .venv && echo "venv OK"
 
 # Key packages
-uv run python -c "import check_stock, check_crypto, financial_news, get_stock_profilio, common" && echo "All packages OK"
+uv run python -c "import check_stock, check_crypto, financial_news, get_stock_portfolio, get_crypto_portfolio, common" && echo "All packages OK"
 ```
 
 ---
@@ -180,7 +200,8 @@ finance-agent/
 │   ├── check_stock/           # Yahoo Finance — quotes, history, charts
 │   ├── check_crypto/          # CoinGecko — quotes, history, charts
 │   ├── financial_news/        # RSS news fetch + semantic ranking
-│   └── get_stock_profilio/    # Trading212 portfolio — account summary + positions
+│   ├── get_stock_portfolio/   # Trading212 portfolio — account summary + positions
+│   └── get_crypto_portfolio/  # Crypto.com portfolio — account balance + positions
 └── pyproject.toml             # uv workspace root
 ```
 

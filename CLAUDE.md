@@ -26,6 +26,10 @@ Each skill lives in `skills/<skill_name>/` and is a uv workspace member. Skills 
 
 See `.claude/rules/skills.md` for conventions.
 
+### Version bumping
+
+Whenever you modify a skill's `SKILL.md`, bump the `version` field in its frontmatter once per change set (patch increment: `0.1.0` → `0.1.1`).
+
 ### Step 0 — Prerequisites (required in every skill)
 
 Every skill's `SKILL.md` must begin its **How to invoke** section with a `Step 0 — Verify prerequisites` block containing these inline bash checks:
