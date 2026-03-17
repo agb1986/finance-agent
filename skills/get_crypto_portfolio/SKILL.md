@@ -1,6 +1,6 @@
 ---
 name: get-crypto-portfolio
-version: 0.1.0
+version: 0.1.1
 description: Fetches the user's Crypto.com Exchange portfolio — account balance and open positions. Use when the user asks about their crypto portfolio, balances, or open positions.
 ---
 
@@ -67,14 +67,13 @@ skills/get_crypto_portfolio/tmp/portfolio_20260317_100000.json
 
   Currency      Cash Balance      Margin Balance    Available         Unrealised PnL    Realised PnL
   ------------  ----------------  ----------------  ----------------  ----------------  --------------
-  USD           20,000.00         20,500.00         18,000.00         +500.00           +100.00
+  USD           116.89            116.89            109.58            0.00              0.00
 
-### Open Positions (2)
+### Open Positions (1)
 
-  Instrument              Type                Quantity        Cost            Unrealised PnL    Realised PnL
-  ----------------------  ------------------  --------------  --------------  ----------------  --------------
-  BTCUSD-PERP             PERPETUAL_SWAP      0.50            15,000.00       +250.00           +50.00
-  ETHUSD-PERP             PERPETUAL_SWAP      2.00            5,000.00        -100.00           0.00
+  Name          Quantity          Market Value      Collateral Amount    P/L
+  ------------  ----------------  ----------------  ------------------  --------------
+  BTC           0.00              116.96            109.65              +7.31
 ```
 
 Read the JSON file for the full raw API response:
@@ -85,21 +84,27 @@ Read the JSON file for the full raw API response:
   "balances": [
     {
       "instrument_name": "USD",
-      "total_cash_balance": "20000.00",
-      "total_margin_balance": "20500.00",
-      "total_available_balance": "18000.00",
-      "total_session_unrealized_pnl": "500.00",
-      "total_session_realized_pnl": "100.00"
+      "total_cash_balance": "116.89",
+      "total_margin_balance": "116.89",
+      "total_available_balance": "109.58",
+      "total_session_unrealized_pnl": "0.00",
+      "total_session_realized_pnl": "0.00",
+      "position_balances": [
+        {
+          "instrument_name": "BTC",
+          "quantity": "0.0015775",
+          "market_value": "116.96321692",
+          "collateral_amount": "109.65301586"
+        }
+      ]
     }
   ],
-  "positions": [
+  "position_balances": [
     {
-      "instrument_name": "BTCUSD-PERP",
-      "type": "PERPETUAL_SWAP",
-      "quantity": "0.5",
-      "cost": "15000.00",
-      "open_position_pnl": "250.00",
-      "cumulative_realized_pnl": "50.00"
+      "instrument_name": "BTC",
+      "quantity": "0.0015775",
+      "market_value": "116.96321692",
+      "collateral_amount": "109.65301586"
     }
   ]
 }
@@ -124,16 +129,16 @@ Present the human-readable summary printed by the script using **exactly** this 
 
 ### Open Positions (<count>)
 
-| Instrument | Type | Quantity | Cost | Unrealised PnL | Realised PnL |
-|---|---|---|---|---|---|
-| <instrument_name> | <type> | <quantity> | <cost> | <open_position_pnl> | <cumulative_realized_pnl> |
+| Name | Quantity | Market Value | Collateral Amount | P/L |
+|---|---|---|---|---|
+| <instrument_name> | <quantity> | <market_value> | <collateral_amount> | <market_value - collateral_amount> |
 
 ---
 
 **Generated file:** `<path to portfolio_*.json>`
 ```
 
-Format numeric values to 2 decimal places. Use a `+` prefix for positive P&L values. Omit the positions table if there are no open positions. Positions are sorted by cost descending.
+Format numeric values to 2 decimal places. Use a `+` prefix for positive P/L values. Omit the positions table if there are no open positions. Positions are sorted by market value descending. P/L = market_value − collateral_amount.
 
 ---
 

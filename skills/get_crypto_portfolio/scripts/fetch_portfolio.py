@@ -20,7 +20,7 @@ from pathlib import Path
 
 from common.args import base_parser
 from common.logger import setup
-from get_crypto_portfolio.client import fetch_positions, fetch_user_balance, make_client
+from get_crypto_portfolio.client import fetch_user_balance, make_client
 from get_crypto_portfolio.formatter import format_portfolio
 
 TMP_DIR = Path(__file__).parent.parent / "tmp"
@@ -50,17 +50,18 @@ def main() -> None:
         client = make_client()
         logger.debug("fetch_portfolio: fetching user balance")
         balances = fetch_user_balance(client, api_key, api_secret)
-        logger.debug("fetch_portfolio: fetching open positions")
-        positions = fetch_positions(client, api_key, api_secret)
     except Exception as exc:
         logger.error(f"failed to fetch portfolio: {exc}")
         sys.exit(1)
+
+    position_balances = [pb for b in balances for pb in b.get("position_balances", [])]
+    logger.debug(f"fetch_portfolio: extracted {len(position_balances)} position balance(s)")
 
     fetched_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     portfolio = {
         "fetched_at": fetched_at,
         "balances": balances,
-        "positions": positions,
+        "position_balances": position_balances,
     }
 
     TMP_DIR.mkdir(parents=True, exist_ok=True)
@@ -71,7 +72,7 @@ def main() -> None:
 
     print(str(output_path))
     print()
-    print(format_portfolio(balances, positions, fetched_at))
+    print(format_portfolio(balances, position_balances, fetched_at))
 
 
 if __name__ == "__main__":

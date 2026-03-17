@@ -14,11 +14,10 @@ import requests
 from get_crypto_portfolio.client import (
     _extract_result,
     _sign_request,
-    fetch_positions,
     fetch_user_balance,
     make_client,
 )
-from get_crypto_portfolio.formatter import _fmt_float, format_portfolio
+from get_crypto_portfolio.formatter import _fmt_decimal, _fmt_float, format_portfolio
 
 _spec = importlib.util.spec_from_file_location(
     "get_crypto_portfolio_fetch_portfolio",
@@ -37,6 +36,21 @@ def reset_logger():
 
 # ── Sample data ────────────────────────────────────────────────────────────────
 
+SAMPLE_POSITION_BALANCES = [
+    {
+        "instrument_name": "BTC",
+        "quantity": "0.5",
+        "market_value": "15250.00",
+        "collateral_amount": "15000.00",
+    },
+    {
+        "instrument_name": "ETH",
+        "quantity": "2.0",
+        "market_value": "4900.00",
+        "collateral_amount": "5000.00",
+    },
+]
+
 SAMPLE_BALANCES = [
     {
         "instrument_name": "USD",
@@ -45,26 +59,8 @@ SAMPLE_BALANCES = [
         "total_available_balance": "18000.00",
         "total_session_unrealized_pnl": "500.00",
         "total_session_realized_pnl": "100.00",
+        "position_balances": SAMPLE_POSITION_BALANCES,
     }
-]
-
-SAMPLE_POSITIONS = [
-    {
-        "instrument_name": "BTCUSD-PERP",
-        "type": "PERPETUAL_SWAP",
-        "quantity": "0.5",
-        "cost": "15000.00",
-        "open_position_pnl": "250.00",
-        "cumulative_realized_pnl": "50.00",
-    },
-    {
-        "instrument_name": "ETHUSD-PERP",
-        "type": "PERPETUAL_SWAP",
-        "quantity": "2.0",
-        "cost": "5000.00",
-        "open_position_pnl": "-100.00",
-        "cumulative_realized_pnl": "0.00",
-    },
 ]
 
 
@@ -181,47 +177,29 @@ class TestFetchUserBalance:
             fetch_user_balance(mock_client, "key", "secret")
 
 
-# ── client: fetch_positions ────────────────────────────────────────────────────
-
-
-class TestFetchPositions:
-    def test_calls_post_with_correct_method(self):
-        mock_client = MagicMock()
-        mock_client.post.return_value = {"code": 0, "result": {"data": SAMPLE_POSITIONS}}
-        result = fetch_positions(mock_client, "key", "secret")
-        assert mock_client.post.call_args[0][0] == "private/get-positions"
-        assert result == SAMPLE_POSITIONS
-
-    def test_raises_on_api_error(self):
-        mock_client = MagicMock()
-        mock_client.post.return_value = {"code": 10001, "message": "Unauthorized"}
-        with pytest.raises(RuntimeError):
-            fetch_positions(mock_client, "key", "secret")
-
-
 # ── formatter ──────────────────────────────────────────────────────────────────
 
 
 class TestFormatPortfolio:
     def test_includes_date_in_header(self):
-        output = format_portfolio(SAMPLE_BALANCES, SAMPLE_POSITIONS, "2026-03-17T10:00:00Z")
+        output = format_portfolio(SAMPLE_BALANCES, SAMPLE_POSITION_BALANCES, "2026-03-17T10:00:00Z")
         assert "2026-03-17" in output
 
     def test_includes_currency(self):
-        output = format_portfolio(SAMPLE_BALANCES, SAMPLE_POSITIONS, "2026-03-17T10:00:00Z")
+        output = format_portfolio(SAMPLE_BALANCES, SAMPLE_POSITION_BALANCES, "2026-03-17T10:00:00Z")
         assert "USD" in output
 
     def test_includes_cash_balance(self):
-        output = format_portfolio(SAMPLE_BALANCES, SAMPLE_POSITIONS, "2026-03-17T10:00:00Z")
+        output = format_portfolio(SAMPLE_BALANCES, SAMPLE_POSITION_BALANCES, "2026-03-17T10:00:00Z")
         assert "20,000.00" in output
 
     def test_includes_position_instruments(self):
-        output = format_portfolio(SAMPLE_BALANCES, SAMPLE_POSITIONS, "2026-03-17T10:00:00Z")
-        assert "BTCUSD-PERP" in output
-        assert "ETHUSD-PERP" in output
+        output = format_portfolio(SAMPLE_BALANCES, SAMPLE_POSITION_BALANCES, "2026-03-17T10:00:00Z")
+        assert "BTC" in output
+        assert "ETH" in output
 
     def test_position_count_shown(self):
-        output = format_portfolio(SAMPLE_BALANCES, SAMPLE_POSITIONS, "2026-03-17T10:00:00Z")
+        output = format_portfolio(SAMPLE_BALANCES, SAMPLE_POSITION_BALANCES, "2026-03-17T10:00:00Z")
         assert "Open Positions (2)" in output
 
     def test_no_positions_message(self):
@@ -232,19 +210,19 @@ class TestFormatPortfolio:
         output = format_portfolio([], [], "2026-03-17T10:00:00Z")
         assert "No balance data" in output
 
-    def test_positions_sorted_by_cost_descending(self):
-        output = format_portfolio(SAMPLE_BALANCES, SAMPLE_POSITIONS, "2026-03-17T10:00:00Z")
-        btc_idx = output.index("BTCUSD-PERP")
-        eth_idx = output.index("ETHUSD-PERP")
-        assert btc_idx < eth_idx  # BTC cost=15000 > ETH cost=5000
+    def test_positions_sorted_by_market_value_descending(self):
+        output = format_portfolio(SAMPLE_BALANCES, SAMPLE_POSITION_BALANCES, "2026-03-17T10:00:00Z")
+        btc_idx = output.index("BTC")
+        eth_idx = output.index("ETH")
+        assert btc_idx < eth_idx  # BTC market_value=15250 > ETH market_value=4900
 
     def test_positive_pnl_has_plus_sign(self):
-        output = format_portfolio(SAMPLE_BALANCES, SAMPLE_POSITIONS, "2026-03-17T10:00:00Z")
-        assert "+250.00" in output
+        output = format_portfolio(SAMPLE_BALANCES, SAMPLE_POSITION_BALANCES, "2026-03-17T10:00:00Z")
+        assert "+250.00" in output  # BTC: 15250 - 15000 = +250
 
     def test_negative_pnl_no_plus_sign(self):
-        output = format_portfolio(SAMPLE_BALANCES, SAMPLE_POSITIONS, "2026-03-17T10:00:00Z")
-        assert "-100.00" in output
+        output = format_portfolio(SAMPLE_BALANCES, SAMPLE_POSITION_BALANCES, "2026-03-17T10:00:00Z")
+        assert "-100.00" in output  # ETH: 4900 - 5000 = -100
         assert "+-100.00" not in output
 
     def test_empty_balances_no_crash(self):
@@ -264,6 +242,34 @@ class TestFmtFloat:
 
     def test_invalid_returns_string(self):
         assert _fmt_float("n/a") == "n/a"
+
+
+class TestFmtDecimal:
+    def test_strips_trailing_zeros(self):
+        assert _fmt_decimal("0.0015775", decimals=7) == "0.0015775"
+
+    def test_whole_number_no_dot(self):
+        assert _fmt_decimal("1.0", decimals=7) == "1"
+
+    def test_custom_decimals(self):
+        assert _fmt_decimal("1.12345", decimals=4) == "1.1235"
+
+    def test_invalid_returns_string(self):
+        assert _fmt_decimal("n/a") == "n/a"
+
+
+class TestFormatPortfolioQuantity:
+    def test_quantity_shows_7_decimal_places(self):
+        positions = [
+            {
+                "instrument_name": "BTC",
+                "quantity": "0.0015775",
+                "market_value": "116.96",
+                "collateral_amount": "109.65",
+            }
+        ]
+        output = format_portfolio([], positions, "2026-03-17T10:00:00Z")
+        assert "0.0015775" in output
 
 
 # ── main (script) ──────────────────────────────────────────────────────────────
@@ -295,10 +301,6 @@ class TestMain:
                 "get_crypto_portfolio_fetch_portfolio.fetch_user_balance",
                 return_value=SAMPLE_BALANCES,
             ),
-            patch(
-                "get_crypto_portfolio_fetch_portfolio.fetch_positions",
-                return_value=SAMPLE_POSITIONS,
-            ),
         ):
             mock_make.return_value = MagicMock()
             with patch("sys.argv", ["fetch_portfolio.py"]):
@@ -313,12 +315,12 @@ class TestMain:
 
         data = json.loads(output_path.read_text())
         assert data["balances"] == SAMPLE_BALANCES
-        assert data["positions"] == SAMPLE_POSITIONS
+        assert data["position_balances"] == SAMPLE_POSITION_BALANCES
         assert "fetched_at" in data
 
         full_output = captured.out
         assert "Crypto.com Portfolio" in full_output
-        assert "BTCUSD-PERP" in full_output
+        assert "BTC" in full_output
 
     def test_api_credentials_passed_to_fetch_functions(self, tmp_path):
         with (
@@ -331,17 +333,12 @@ class TestMain:
                 "get_crypto_portfolio_fetch_portfolio.fetch_user_balance",
                 return_value=SAMPLE_BALANCES,
             ) as mock_balance,
-            patch(
-                "get_crypto_portfolio_fetch_portfolio.fetch_positions",
-                return_value=SAMPLE_POSITIONS,
-            ) as mock_positions,
         ):
             mock_make.return_value = MagicMock()
             with patch("sys.argv", ["fetch_portfolio.py"]):
                 fetch_portfolio.main()
 
         mock_balance.assert_called_once_with(mock_make.return_value, "my-key", "my-secret")
-        mock_positions.assert_called_once_with(mock_make.return_value, "my-key", "my-secret")
 
     def test_exits_on_api_error(self, tmp_path):
         with (
@@ -386,10 +383,6 @@ class TestMain:
             patch(
                 "get_crypto_portfolio_fetch_portfolio.fetch_user_balance",
                 return_value=SAMPLE_BALANCES,
-            ),
-            patch(
-                "get_crypto_portfolio_fetch_portfolio.fetch_positions",
-                return_value=SAMPLE_POSITIONS,
             ),
         ):
             mock_make.return_value = MagicMock()
