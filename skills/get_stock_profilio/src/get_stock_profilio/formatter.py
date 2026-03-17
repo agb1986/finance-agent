@@ -4,6 +4,10 @@ from datetime import datetime
 
 from common.logger import get_logger
 
+_GREEN = "\033[32m"
+_RED = "\033[31m"
+_RESET = "\033[0m"
+
 
 def _fmt_date(iso: str) -> str:
     """Parse an ISO 8601 datetime string and return DD/MM/YYYY."""
@@ -91,7 +95,7 @@ def format_portfolio(summary: dict, positions: list[dict], fetched_at: str) -> s
                 f"  {curr_price:<{col_w[4]}.2f}"
                 f"  {total_cost:<{col_w[5]}.2f}"
                 f"  {curr_value:<{col_w[6]}.2f}"
-                f"  {pnl_sign}{pnl:.2f}"
+                f"  {_GREEN if pnl >= 0 else _RED}{pnl_sign}{pnl:.2f}{_RESET}"
             )
             lines.append(row)
     else:

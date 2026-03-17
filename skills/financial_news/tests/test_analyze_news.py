@@ -296,3 +296,50 @@ class TestMain:
             patch("sys.argv", ["analyze_news.py", "--input", str(news), "--debug"]),
         ):
             analyze_news.main()
+
+    def test_min_semantic_filters_articles(self, tmp_path):
+        cfg = self._make_config(tmp_path)
+        news = self._make_news_file(tmp_path)
+        # mock_model returns scores ~[0.9, 0.5, 0.2]; --min-semantic 0.6 should keep only rank 1
+        with (
+            patch.object(analyze_news, "TMP_DIR", tmp_path),
+            patch.object(analyze_news, "DEFAULT_CONFIG", cfg),
+            patch("financial_news.analyzer.SentenceTransformer", return_value=self._mock_model()),
+            patch("sys.argv", ["analyze_news.py", "--input", str(news), "--min-semantic", "0.6"]),
+        ):
+            analyze_news.main()
+
+        data = json.loads(list(tmp_path.glob("analysis_*.json"))[0].read_text())
+        assert all(a["semantic_score"] >= 0.6 for a in data)
+        assert len(data) < 3
+
+    def test_min_keyword_filters_articles(self, tmp_path):
+        cfg = self._make_config(tmp_path)
+        news = self._make_news_file(tmp_path)
+        with (
+            patch.object(analyze_news, "TMP_DIR", tmp_path),
+            patch.object(analyze_news, "DEFAULT_CONFIG", cfg),
+            patch("financial_news.analyzer.SentenceTransformer", return_value=self._mock_model()),
+            patch("sys.argv", ["analyze_news.py", "--input", str(news), "--min-keyword", "0.5"]),
+        ):
+            analyze_news.main()
+
+        data = json.loads(list(tmp_path.glob("analysis_*.json"))[0].read_text())
+        assert all(a["keyword_score"] >= 0.5 for a in data)
+
+    def test_min_semantic_and_min_keyword_combined(self, tmp_path):
+        cfg = self._make_config(tmp_path)
+        news = self._make_news_file(tmp_path)
+        with (
+            patch.object(analyze_news, "TMP_DIR", tmp_path),
+            patch.object(analyze_news, "DEFAULT_CONFIG", cfg),
+            patch("financial_news.analyzer.SentenceTransformer", return_value=self._mock_model()),
+            patch(
+                "sys.argv",
+                ["analyze_news.py", "--input", str(news), "--min-semantic", "0.4", "--min-keyword", "0.5"],
+            ),
+        ):
+            analyze_news.main()
+
+        data = json.loads(list(tmp_path.glob("analysis_*.json"))[0].read_text())
+        assert all(a["semantic_score"] >= 0.4 and a["keyword_score"] >= 0.5 for a in data)
