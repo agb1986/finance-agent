@@ -1,10 +1,10 @@
 """Fetch Trading212 stock portfolio and print a human-readable summary.
 
-Output file: skills/get_stock_profilio/tmp/portfolio_<timestamp>.json
+Output file: skills/get_stock_portfolio/tmp/portfolio_<timestamp>.json
 
 Usage:
-    uv run skills/get_stock_profilio/scripts/fetch_portfolio.py
-    uv run skills/get_stock_profilio/scripts/fetch_portfolio.py --debug
+    uv run skills/get_stock_portfolio/scripts/fetch_portfolio.py
+    uv run skills/get_stock_portfolio/scripts/fetch_portfolio.py --debug
 
 Environment:
     TRADING_212_API_KEY  Required. Your Trading212 API key.
@@ -19,8 +19,8 @@ from pathlib import Path
 
 from common.args import base_parser
 from common.logger import setup
-from get_stock_profilio.client import fetch_account_summary, fetch_positions, make_client
-from get_stock_profilio.formatter import format_portfolio
+from get_stock_portfolio.client import fetch_account_summary, fetch_positions, make_client
+from get_stock_portfolio.formatter import format_portfolio
 
 TMP_DIR = Path(__file__).parent.parent / "tmp"
 

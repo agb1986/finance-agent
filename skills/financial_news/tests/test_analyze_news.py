@@ -336,7 +336,15 @@ class TestMain:
             patch("financial_news.analyzer.SentenceTransformer", return_value=self._mock_model()),
             patch(
                 "sys.argv",
-                ["analyze_news.py", "--input", str(news), "--min-semantic", "0.4", "--min-keyword", "0.5"],
+                [
+                    "analyze_news.py",
+                    "--input",
+                    str(news),
+                    "--min-semantic",
+                    "0.4",
+                    "--min-keyword",
+                    "0.5",
+                ],
             ),
         ):
             analyze_news.main()

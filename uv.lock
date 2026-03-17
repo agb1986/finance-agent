@@ -20,7 +20,8 @@ members = [
     "common",
     "finance-agent",
     "financial-news",
-    "get-stock-profilio",
+    "get-crypto-portfolio",
+    "get-stock-portfolio",
 ]
 
 [[package]]
@@ -727,9 +728,36 @@ wheels = [
 ]
 
 [[package]]
-name = "get-stock-profilio"
+name = "get-crypto-portfolio"
 version = "0.1.0"
-source = { editable = "skills/get_stock_profilio" }
+source = { editable = "skills/get_crypto_portfolio" }
+dependencies = [
+    { name = "common" },
+    { name = "requests" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-cov" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "common", editable = "common" },
+    { name = "requests", specifier = ">=2.32" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=9.0" },
+    { name = "pytest-cov", specifier = ">=7.0" },
+]
+
+[[package]]
+name = "get-stock-portfolio"
+version = "0.1.0"
+source = { editable = "skills/get_stock_portfolio" }
 dependencies = [
     { name = "common" },
     { name = "requests" },
