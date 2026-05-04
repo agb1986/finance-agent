@@ -1,0 +1,11 @@
+services:
+  finance-mcp:
+    build: .
+    container_name: finance-mcp
+    # Bind to localhost only — not exposed to the wider network
+    ports:
+      - "127.0.0.1:35001:35001"
+    # API keys are read from a .env file at the repo root (see .env.example)
+    env_file:
+      - .env
+    restart: unless-stopped

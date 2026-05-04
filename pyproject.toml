@@ -7,7 +7,7 @@ requires-python = ">=3.11"
 dependencies = []
 
 [tool.uv.workspace]
-members = ["common", "skills/*"]
+members = ["common", "skills/*", "mcp_server"]
 
 [tool.uv.sources]
 common = { workspace = true }
