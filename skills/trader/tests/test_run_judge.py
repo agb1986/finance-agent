@@ -28,7 +28,7 @@ SAMPLE_CONFIG = {
     "models": {
         "panel": "claude-sonnet-4-6",
         "debate": "claude-opus-4-8",
-        "judge": "claude-fable-5",
+        "judge": "claude-opus-4-8",
     },
     "max_tokens": {"panel": 1024, "debate": 2048, "judge": 2048},
     "panel": {"fundamental": "f"},
@@ -103,7 +103,7 @@ class TestRunJudge:
         run_judge(client, SAMPLE_CONFIG, "AMZN", SAMPLE_TRANSCRIPT)
 
         call = client.messages.create.call_args
-        assert call.kwargs["model"] == "claude-fable-5"
+        assert call.kwargs["model"] == "claude-opus-4-8"
         assert call.kwargs["system"] == "You are the judge."
 
     def test_prompt_contains_symbol_and_transcript(self):

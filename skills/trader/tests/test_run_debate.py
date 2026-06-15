@@ -28,7 +28,7 @@ SAMPLE_CONFIG = {
     "models": {
         "panel": "claude-sonnet-4-6",
         "debate": "claude-opus-4-8",
-        "judge": "claude-fable-5",
+        "judge": "claude-opus-4-8",
     },
     "max_tokens": {"panel": 1024, "debate": 2048, "judge": 2048},
     "panel": {"fundamental": "f", "risk": "r"},

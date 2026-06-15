@@ -12,11 +12,11 @@ Runs a three-layer multi-agent pipeline via the Anthropic SDK, with a different 
 |---|---|---|
 | 1. Analyst panel (parallel) | fundamental, technical, macro, sentiment, risk | `claude-sonnet-4-6` |
 | 2. Bull/bear debate (2 rounds) | bull advocate, bear advocate | `claude-opus-4-8` |
-| 3. Judge | impartial scorer (50-point rubric per side) | `claude-fable-5` |
+| 3. Judge | impartial scorer (50-point rubric per side) | `claude-opus-4-8` |
 
 Role prompts and model assignments live in `skills/trader/config/roles.yaml` — editable without touching code.
 
-> **Cost note:** one full run makes 10 API calls (5× Sonnet, 4× Opus, 1× Fable 5). Each stage writes its output to `tmp/`, so a failed or re-run stage never repeats earlier calls.
+> **Cost note:** one full run makes 10 API calls (5× Sonnet, 4× Opus, 1× Opus for judge). Each stage writes its output to `tmp/`, so a failed or re-run stage never repeats earlier calls.
 
 ## When to invoke
 
@@ -53,10 +53,14 @@ test -d .venv && echo "venv OK" || echo "ERROR: .venv not found"
 uv run python -c "import trader, anthropic, yaml, common" && echo "All packages OK"
 
 # API key is configured (required — every stage calls the Anthropic API)
-test -n "$ANTHROPIC_API_KEY" && echo "API key OK" || echo "ERROR: ANTHROPIC_API_KEY not set"
+# Falls back to secret-tool automatically if not exported
+test -n "$ANTHROPIC_API_KEY" && echo "API key in env" || secret-tool lookup service anthropic key api-key > /dev/null 2>&1 && echo "API key via secret-tool OK" || echo "ERROR: ANTHROPIC_API_KEY not set and secret-tool lookup failed"
 ```
 
-If `ANTHROPIC_API_KEY` is not set, stop and ask the user to export it — do not proceed to Step 1.
+If the check prints ERROR, stop and ask the user to either export `ANTHROPIC_API_KEY` or store it with:
+```bash
+secret-tool store --label="Anthropic API Key" service anthropic key api-key
+```
 
 ---
 
