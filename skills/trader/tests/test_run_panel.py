@@ -59,7 +59,7 @@ class TestLoadConfig:
         assert set(config["debate"]) == {"bull", "bear"}
         assert config["models"]["panel"] == "claude-sonnet-4-6"
         assert config["models"]["debate"] == "claude-opus-4-8"
-        assert config["models"]["judge"] == "claude-fable-5"
+        assert config["models"]["judge"] == "claude-opus-4-8"
 
     def test_shipped_config_path_exists(self):
         assert CONFIG_PATH.exists()
@@ -77,8 +77,9 @@ class TestLoadConfig:
 class TestGetClient:
     def test_raises_without_api_key(self, monkeypatch):
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        with pytest.raises(RuntimeError, match="ANTHROPIC_API_KEY"):
-            get_client()
+        with patch("trader.client.subprocess.run", side_effect=FileNotFoundError):
+            with pytest.raises(RuntimeError, match="ANTHROPIC_API_KEY"):
+                get_client()
 
     def test_returns_client_with_api_key(self, monkeypatch):
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")

@@ -1,6 +1,7 @@
 """Thin wrapper around the Anthropic SDK for stateless, single-role calls."""
 
 import os
+import subprocess
 
 from anthropic import Anthropic
 from common.logger import get_logger
@@ -10,11 +11,26 @@ def get_client() -> Anthropic:
     """
     Return an Anthropic client, failing fast if no API key is configured.
 
+    Falls back to secret-tool if ANTHROPIC_API_KEY is not in the environment.
+
     Raises:
-        RuntimeError: If ANTHROPIC_API_KEY is not set in the environment.
+        RuntimeError: If ANTHROPIC_API_KEY cannot be found via env or secret-tool.
     """
     if not os.environ.get("ANTHROPIC_API_KEY"):
-        raise RuntimeError("ANTHROPIC_API_KEY is not set — export it before running trader")
+        try:
+            result = subprocess.run(
+                ["secret-tool", "lookup", "service", "anthropic", "key", "api-key"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            os.environ["ANTHROPIC_API_KEY"] = result.stdout.strip()
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            raise RuntimeError(
+                "ANTHROPIC_API_KEY is not set and secret-tool lookup failed — "
+                "export it or store it with: "
+                "secret-tool store --label='Anthropic API Key' service anthropic key api-key"
+            )
     return Anthropic()
 
 
