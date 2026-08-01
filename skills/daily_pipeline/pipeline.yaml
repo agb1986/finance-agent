@@ -1,0 +1,23 @@
+# Daily pipeline configuration. Edit thresholds here — no code changes needed.
+
+news:
+  hours: 24            # look-back window for the RSS fetch
+  min_semantic: 0.40   # analysis filter passed to analyze_news.py
+
+tickers:
+  top_n: 5             # how many top ticker mentions go to the trader
+
+portfolio:
+  min_abs_pnl_pct: 5.0      # |unrealised P&L %| threshold to flag a holding
+  min_position_value: 25.0  # ignore positions below this value (account currency)
+  max_candidates: 3         # cap on portfolio-gated trader candidates
+
+trader:
+  max_runs: 8              # hard cap on trader pipelines per day (10 API calls each)
+  verdict_cache_days: 3    # reuse an existing verdict newer than this many days
+  rounds: 2                # debate rounds passed to run_debate.py
+
+email:
+  subject_prefix: "Daily Finance Report"
+
+retention_days: 14   # prune run directories older than this
