@@ -5,6 +5,7 @@ import subprocess
 
 from anthropic import Anthropic
 from common.logger import get_logger
+from common.usage import record
 
 
 def get_client() -> Anthropic:
@@ -36,9 +37,9 @@ def get_client() -> Anthropic:
 
 def call_role(
     client: Anthropic, model: str, system: str, user_message: str, max_tokens: int
-) -> str:
+) -> tuple[str, dict]:
     """
-    Send one stateless message to a role and return the concatenated text response.
+    Send one stateless message to a role and return its text plus token usage.
 
     Each call is independent — roles share no memory. "Switching" models between
     pipeline stages means re-packing accumulated context into the next call's
@@ -52,7 +53,8 @@ def call_role(
         max_tokens: Response token cap for this role.
 
     Returns:
-        The text content of the response.
+        ``(text, usage)`` — the response text and a per-model usage dict
+        (see common.usage) so callers can report token spend.
     """
     logger = get_logger()
     logger.debug(
@@ -66,6 +68,10 @@ def call_role(
         messages=[{"role": "user", "content": user_message}],
     )
     text = "".join(block.text for block in response.content if block.type == "text")
+    used = record(model, getattr(response, "usage", None))
 
-    logger.debug(f"call_role: {len(text)} chars returned by {model!r}")
-    return text
+    logger.debug(
+        f"call_role: {len(text)} chars returned by {model!r} "
+        f"({used[model]['input_tokens']} in / {used[model]['output_tokens']} out)"
+    )
+    return text, used

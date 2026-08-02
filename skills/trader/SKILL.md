@@ -1,6 +1,6 @@
 ---
 name: trader
-version: 0.1.0
+version: 0.1.1
 description: Runs a multi-agent investment analysis on a stock — five specialist analysts in parallel, a bull/bear debate, and a judge that scores both sides and delivers a verdict. Use when the user asks whether to buy/sell/hold a stock or wants a deep, multi-perspective investment case.
 ---
 
@@ -16,7 +16,7 @@ Runs a three-layer multi-agent pipeline via the Anthropic SDK, with a different 
 
 Role prompts and model assignments live in `skills/trader/config/roles.yaml` — editable without touching code.
 
-> **Cost note:** one full run makes 10 API calls (5× Sonnet, 4× Opus, 1× Opus for judge). Each stage writes its output to `tmp/`, so a failed or re-run stage never repeats earlier calls.
+> **Cost note:** one full run makes 10 API calls (5× Sonnet, 4× Opus, 1× Opus for judge), measured at ~$0.16. Each stage writes its output to `tmp/`, so a failed or re-run stage never repeats earlier calls. Every artifact records its token usage — see Step 4.
 
 ## When to invoke
 
@@ -135,6 +135,12 @@ skills/trader/tmp/verdict_AMZN_20260610_090400.json
 The `verdict` object contains a `scorecard` (both sides scored 0–10 on evidence quality, rebuttal validity, risk-adjusted logic, internal consistency, falsifiability), `winner`, `confidence`, the strongest argument and fatal flaw for each side, `key_unresolved_question`, and a prose `verdict`.
 
 > If the judge returned malformed JSON, the file contains `{"raw": ..., "parse_error": ...}` instead — present the raw text and note the parse failure.
+
+Every artifact also carries a `usage` object keyed by model
+(`{"claude-opus-4-8": {"input_tokens": …, "output_tokens": …, "calls": …}}`).
+Each stage adds its own tokens to the total it read from the previous stage, so
+`verdict_*.json` holds the token cost of the **whole** panel → debate → judge
+chain — that is what the daily pipeline reads to report spend.
 
 ---
 

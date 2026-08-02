@@ -52,7 +52,7 @@ def main() -> None:
     try:
         client = get_client()
         config = load_config()
-        panel = run_panel(client, config, symbol, context)
+        panel, used = run_panel(client, config, symbol, context)
     except Exception as exc:
         logger.error(f"panel failed for {symbol!r}: {exc}")
         sys.exit(1)
@@ -67,6 +67,9 @@ def main() -> None:
                 "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                 "context_file": args.context_file,
                 "panel": panel,
+                # Carried forward by run_debate and run_judge so the final
+                # verdict file holds the whole pipeline's token spend.
+                "usage": used,
             },
             indent=2,
         )

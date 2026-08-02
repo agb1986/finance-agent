@@ -16,6 +16,7 @@ from pathlib import Path
 
 from common.args import base_parser
 from common.logger import setup
+from common.usage import merge
 from trader.client import get_client
 from trader.judge import run_judge
 from trader.roles import load_config
@@ -45,10 +46,14 @@ def main() -> None:
     try:
         client = get_client()
         config = load_config()
-        verdict = run_judge(client, config, symbol, transcript)
+        verdict, used = run_judge(client, config, symbol, transcript)
     except Exception as exc:
         logger.error(f"judge failed for {symbol!r}: {exc}")
         sys.exit(1)
+
+    # Final hop: panel + debate tokens plus this call, so the verdict file
+    # carries the full cost of producing it.
+    running = merge(data.get("usage"), used)
 
     TMP_DIR.mkdir(parents=True, exist_ok=True)
     timestamp = time.strftime("%Y%m%d_%H%M%S")
@@ -59,6 +64,7 @@ def main() -> None:
                 "symbol": symbol,
                 "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                 "verdict": verdict,
+                "usage": running,
             },
             indent=2,
         )

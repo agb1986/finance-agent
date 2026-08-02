@@ -9,6 +9,15 @@ dependencies = []
 [tool.uv.workspace]
 members = ["common", "skills/*", "mcp_server"]
 
+# sentence-transformers (financial_news) pulls in torch, which defaults to the
+# CUDA build — ~6.5GB of nvidia/triton wheels. Nothing here uses a GPU and the
+# deployment target is a headless CasaOS box, so financial_news pins torch to
+# this CPU-only index (see skills/financial_news/pyproject.toml).
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
 [tool.uv.sources]
 common = { workspace = true }
 

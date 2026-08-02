@@ -5,6 +5,7 @@ import json
 import logging
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -26,12 +27,23 @@ def reset_logger():
     logging.getLogger("finance_agent").handlers.clear()
 
 
+def _fake_usage(input_tokens: int = 100, output_tokens: int = 50) -> SimpleNamespace:
+    """A stand-in for the SDK usage object — real ints, not MagicMock attributes."""
+    return SimpleNamespace(
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cache_read_input_tokens=0,
+        cache_creation_input_tokens=0,
+    )
+
+
 def _fake_response(text: str) -> MagicMock:
     block = MagicMock()
     block.type = "text"
     block.text = text
     response = MagicMock()
     response.content = [block]
+    response.usage = _fake_usage()
     return response
 
 
@@ -94,9 +106,18 @@ class TestCallRole:
         client = MagicMock()
         client.messages.create.return_value = _fake_response("brief text")
 
-        result = call_role(client, "claude-sonnet-4-6", "system prompt", "user msg", 1024)
+        text, used = call_role(client, "claude-sonnet-4-6", "system prompt", "user msg", 1024)
 
-        assert result == "brief text"
+        assert text == "brief text"
+        assert used == {
+            "claude-sonnet-4-6": {
+                "input_tokens": 100,
+                "output_tokens": 50,
+                "cache_read_input_tokens": 0,
+                "cache_creation_input_tokens": 0,
+                "calls": 1,
+            }
+        }
         client.messages.create.assert_called_once_with(
             model="claude-sonnet-4-6",
             max_tokens=1024,
@@ -112,10 +133,11 @@ class TestCallRole:
         text.text = "answer"
         response = MagicMock()
         response.content = [thinking, text]
+        response.usage = _fake_usage()
         client = MagicMock()
         client.messages.create.return_value = response
 
-        assert call_role(client, "m", "s", "u", 10) == "answer"
+        assert call_role(client, "m", "s", "u", 10)[0] == "answer"
 
     def test_concatenates_multiple_text_blocks(self):
         client = MagicMock()
@@ -127,9 +149,10 @@ class TestCallRole:
             block.text = part
             blocks.append(block)
         response.content = blocks
+        response.usage = _fake_usage()
         client.messages.create.return_value = response
 
-        assert call_role(client, "m", "s", "u", 10) == "foobar"
+        assert call_role(client, "m", "s", "u", 10)[0] == "foobar"
 
 
 # ── run_panel (library) ───────────────────────────────────────────────────────
@@ -151,11 +174,22 @@ class TestRunPanel:
         client = MagicMock()
         client.messages.create.return_value = _fake_response("a brief")
 
-        result = run_panel(client, SAMPLE_CONFIG, "AMZN")
+        result, used = run_panel(client, SAMPLE_CONFIG, "AMZN")
 
         assert set(result) == {"fundamental", "risk"}
         assert all(brief == "a brief" for brief in result.values())
         assert client.messages.create.call_count == 2
+
+    def test_sums_usage_across_roles(self):
+        client = MagicMock()
+        client.messages.create.return_value = _fake_response("a brief")
+
+        _, used = run_panel(client, SAMPLE_CONFIG, "AMZN")
+
+        # Two roles on the panel model — usage merges rather than overwriting.
+        assert used["claude-sonnet-4-6"]["calls"] == 2
+        assert used["claude-sonnet-4-6"]["input_tokens"] == 200
+        assert used["claude-sonnet-4-6"]["output_tokens"] == 100
 
     def test_all_roles_get_same_prompt_and_panel_model(self):
         client = MagicMock()
@@ -180,6 +214,15 @@ class TestRunPanel:
 # ── main (script) ─────────────────────────────────────────────────────────────
 
 SAMPLE_PANEL = {"fundamental": "buy", "risk": "2%"}
+SAMPLE_USAGE = {
+    "claude-sonnet-4-6": {
+        "input_tokens": 200,
+        "output_tokens": 100,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "calls": 2,
+    }
+}
 
 
 class TestMain:
@@ -187,7 +230,7 @@ class TestMain:
         defaults = {
             "get_client": MagicMock(),
             "load_config": MagicMock(return_value=SAMPLE_CONFIG),
-            "run_panel": MagicMock(return_value=SAMPLE_PANEL),
+            "run_panel": MagicMock(return_value=(SAMPLE_PANEL, SAMPLE_USAGE)),
         }
         defaults.update(overrides)
         return (
@@ -211,11 +254,13 @@ class TestMain:
         assert data["symbol"] == "AMZN"
         assert data["panel"] == SAMPLE_PANEL
         assert data["context_file"] is None
+        # Usage is written so run_debate can carry it forward.
+        assert data["usage"] == SAMPLE_USAGE
 
     def test_passes_context_file_content(self, tmp_path):
         context_file = tmp_path / "quote.json"
         context_file.write_text('{"price": 1}')
-        mock_run = MagicMock(return_value=SAMPLE_PANEL)
+        mock_run = MagicMock(return_value=(SAMPLE_PANEL, SAMPLE_USAGE))
         p1, p2, p3, p4 = self._patches(tmp_path, run_panel=mock_run)
         with p1, p2, p3, p4:
             argv = ["run_panel.py", "--symbol", "AMZN", "--context-file", str(context_file)]

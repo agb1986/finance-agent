@@ -2,6 +2,7 @@
 
 from anthropic import Anthropic
 from common.logger import get_logger
+from common.usage import merge
 
 from trader.client import call_role
 
@@ -14,7 +15,7 @@ def build_base_prompt(symbol: str, panel: dict[str, str]) -> str:
 
 def run_debate(
     client: Anthropic, config: dict, symbol: str, panel: dict[str, str], rounds: int = 2
-) -> list[dict]:
+) -> tuple[list[dict], dict]:
     """
     Run a fixed-rounds bull/bear debate.
 
@@ -29,7 +30,9 @@ def run_debate(
         rounds: Number of rounds (default 2 — marginal value drops sharply after).
 
     Returns:
-        Transcript as a list of {"round": int, "side": "bull"|"bear", "argument": str}.
+        ``(transcript, usage)`` — the transcript as a list of
+        {"round": int, "side": "bull"|"bear", "argument": str}, plus the
+        combined token usage across every round.
     """
     logger = get_logger()
     base = build_base_prompt(symbol, panel)
@@ -38,6 +41,7 @@ def run_debate(
     systems = {"bull": config["debate"]["bull"], "bear": config["debate"]["bear"]}
 
     transcript: list[dict] = []
+    total: dict = {}
     prev: dict[str, str | None] = {"bull": None, "bear": None}
 
     for round_no in range(1, rounds + 1):
@@ -46,13 +50,14 @@ def run_debate(
             "bull": base if prev["bear"] is None else f"{base}\n\nBEAR TO REBUT:\n{prev['bear']}",
             "bear": base if prev["bull"] is None else f"{base}\n\nBULL TO REBUT:\n{prev['bull']}",
         }
-        current = {
-            side: call_role(client, model, systems[side], prompts[side], max_tokens)
-            for side in ("bull", "bear")
-        }
+        current: dict[str, str] = {}
+        for side in ("bull", "bear"):
+            text, used = call_role(client, model, systems[side], prompts[side], max_tokens)
+            current[side] = text
+            total = merge(total, used)
         for side in ("bull", "bear"):
             transcript.append({"round": round_no, "side": side, "argument": current[side]})
         prev = dict(current)
 
     logger.debug(f"run_debate: transcript has {len(transcript)} entries")
-    return transcript
+    return transcript, total

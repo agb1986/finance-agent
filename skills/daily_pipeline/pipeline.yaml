@@ -1,0 +1,33 @@
+# Daily pipeline configuration. Edit thresholds here — no code changes needed.
+
+news:
+  hours: 24            # look-back window for the RSS fetch
+  min_semantic: 0.40   # analysis filter passed to analyze_news.py
+
+tickers:
+  top_n: 5             # how many top ticker mentions go to the trader
+
+portfolio:
+  min_abs_pnl_pct: 5.0      # |unrealised P&L %| threshold to flag a holding
+  min_position_value: 25.0  # ignore positions below this value (account currency)
+  max_candidates: 3         # cap on portfolio-gated trader candidates
+
+trader:
+  max_runs: 2              # hard cap on trader pipelines per day (10 API calls each)
+  verdict_cache_days: 3    # reuse an existing verdict newer than this many days
+  rounds: 2                # debate rounds passed to run_debate.py
+
+email:
+  subject_prefix: "Daily Finance Report"
+
+retention_days: 14   # prune run directories older than this
+
+# USD per million tokens, used only to estimate the cost shown in the report.
+# Edit when Anthropic pricing changes — an unlisted model reports tokens but no
+# cost, so add a row here whenever roles.yaml or report.py gains a new model.
+pricing:
+  currency: "$"
+  models:
+    claude-sonnet-4-6: {input: 3.00, output: 15.00}   # trader panel
+    claude-opus-4-8: {input: 5.00, output: 25.00}     # trader debate + judge
+    claude-opus-5: {input: 5.00, output: 25.00}       # executive summary

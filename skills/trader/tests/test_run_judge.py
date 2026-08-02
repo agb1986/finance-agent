@@ -5,6 +5,7 @@ import json
 import logging
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -56,6 +57,12 @@ def _fake_response(text: str) -> MagicMock:
     block.text = text
     response = MagicMock()
     response.content = [block]
+    response.usage = SimpleNamespace(
+        input_tokens=100,
+        output_tokens=50,
+        cache_read_input_tokens=0,
+        cache_creation_input_tokens=0,
+    )
     return response
 
 
@@ -92,7 +99,7 @@ class TestRunJudge:
         client = MagicMock()
         client.messages.create.return_value = _fake_response(json.dumps(SAMPLE_VERDICT))
 
-        result = run_judge(client, SAMPLE_CONFIG, "AMZN", SAMPLE_TRANSCRIPT)
+        result, _ = run_judge(client, SAMPLE_CONFIG, "AMZN", SAMPLE_TRANSCRIPT)
 
         assert result == SAMPLE_VERDICT
 
@@ -119,18 +126,48 @@ class TestRunJudge:
 
 # ── main (script) ─────────────────────────────────────────────────────────────
 
+# Panel + debate tokens already accumulated in the debate file.
+UPSTREAM_USAGE = {
+    "claude-sonnet-4-6": {
+        "input_tokens": 200,
+        "output_tokens": 100,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "calls": 2,
+    },
+    "claude-opus-4-8": {
+        "input_tokens": 400,
+        "output_tokens": 200,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "calls": 4,
+    },
+}
+# What the judge call itself consumed.
+SAMPLE_USAGE = {
+    "claude-opus-4-8": {
+        "input_tokens": 300,
+        "output_tokens": 150,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "calls": 1,
+    }
+}
+
 
 class TestMain:
     def _debate_file(self, tmp_path: Path) -> Path:
         debate_file = tmp_path / "debate_AMZN_x.json"
-        debate_file.write_text(json.dumps({"symbol": "AMZN", "transcript": SAMPLE_TRANSCRIPT}))
+        debate_file.write_text(
+            json.dumps({"symbol": "AMZN", "transcript": SAMPLE_TRANSCRIPT, "usage": UPSTREAM_USAGE})
+        )
         return debate_file
 
     def _patches(self, tmp_path, **overrides):
         defaults = {
             "get_client": MagicMock(),
             "load_config": MagicMock(return_value=SAMPLE_CONFIG),
-            "run_judge": MagicMock(return_value=SAMPLE_VERDICT),
+            "run_judge": MagicMock(return_value=(SAMPLE_VERDICT, SAMPLE_USAGE)),
         }
         defaults.update(overrides)
         return (
@@ -154,10 +191,14 @@ class TestMain:
         data = json.loads(output_path.read_text())
         assert data["symbol"] == "AMZN"
         assert data["verdict"] == SAMPLE_VERDICT
+        # The verdict file carries the whole chain: panel + debate + judge.
+        assert data["usage"]["claude-sonnet-4-6"]["calls"] == 2
+        assert data["usage"]["claude-opus-4-8"]["calls"] == 5
+        assert data["usage"]["claude-opus-4-8"]["input_tokens"] == 700
 
     def test_passes_transcript_to_judge(self, tmp_path):
         debate_file = self._debate_file(tmp_path)
-        mock_run = MagicMock(return_value=SAMPLE_VERDICT)
+        mock_run = MagicMock(return_value=(SAMPLE_VERDICT, SAMPLE_USAGE))
         p1, p2, p3, p4 = self._patches(tmp_path, run_judge=mock_run)
         with p1, p2, p3, p4:
             with patch("sys.argv", ["run_judge.py", "--input", str(debate_file)]):

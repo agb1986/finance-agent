@@ -5,6 +5,7 @@ import json
 import logging
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -50,6 +51,12 @@ def _scripted_client(replies: dict[str, list[str]]) -> MagicMock:
         block.text = next(counters[side])
         response = MagicMock()
         response.content = [block]
+        response.usage = SimpleNamespace(
+            input_tokens=100,
+            output_tokens=50,
+            cache_read_input_tokens=0,
+            cache_creation_input_tokens=0,
+        )
         return response
 
     client = MagicMock()
@@ -72,7 +79,7 @@ class TestRunDebate:
     def test_two_rounds_produce_four_entries(self):
         client = _scripted_client({"bull": ["b1", "b2"], "bear": ["r1", "r2"]})
 
-        transcript = run_debate(client, SAMPLE_CONFIG, "AMZN", SAMPLE_PANEL)
+        transcript, _ = run_debate(client, SAMPLE_CONFIG, "AMZN", SAMPLE_PANEL)
 
         assert [(e["round"], e["side"], e["argument"]) for e in transcript] == [
             (1, "bull", "b1"),
@@ -113,7 +120,7 @@ class TestRunDebate:
     def test_single_round(self):
         client = _scripted_client({"bull": ["b1"], "bear": ["r1"]})
 
-        transcript = run_debate(client, SAMPLE_CONFIG, "AMZN", SAMPLE_PANEL, rounds=1)
+        transcript, _ = run_debate(client, SAMPLE_CONFIG, "AMZN", SAMPLE_PANEL, rounds=1)
 
         assert len(transcript) == 2
         assert client.messages.create.call_count == 2
@@ -126,18 +133,41 @@ SAMPLE_TRANSCRIPT = [
     {"round": 1, "side": "bear", "argument": "r1"},
 ]
 
+# What run_panel wrote into the panel file — must survive into the debate file.
+PANEL_USAGE = {
+    "claude-sonnet-4-6": {
+        "input_tokens": 200,
+        "output_tokens": 100,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "calls": 2,
+    }
+}
+# What this debate itself consumed.
+SAMPLE_USAGE = {
+    "claude-opus-4-8": {
+        "input_tokens": 400,
+        "output_tokens": 200,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "calls": 4,
+    }
+}
+
 
 class TestMain:
     def _panel_file(self, tmp_path: Path) -> Path:
         panel_file = tmp_path / "panel_AMZN_x.json"
-        panel_file.write_text(json.dumps({"symbol": "AMZN", "panel": SAMPLE_PANEL}))
+        panel_file.write_text(
+            json.dumps({"symbol": "AMZN", "panel": SAMPLE_PANEL, "usage": PANEL_USAGE})
+        )
         return panel_file
 
     def _patches(self, tmp_path, **overrides):
         defaults = {
             "get_client": MagicMock(),
             "load_config": MagicMock(return_value=SAMPLE_CONFIG),
-            "run_debate": MagicMock(return_value=SAMPLE_TRANSCRIPT),
+            "run_debate": MagicMock(return_value=(SAMPLE_TRANSCRIPT, SAMPLE_USAGE)),
         }
         defaults.update(overrides)
         return (
@@ -163,10 +193,13 @@ class TestMain:
         assert data["rounds"] == 2
         assert data["panel"] == SAMPLE_PANEL
         assert data["transcript"] == SAMPLE_TRANSCRIPT
+        # Panel usage from the input file is carried forward alongside the debate's own.
+        assert data["usage"]["claude-sonnet-4-6"]["calls"] == 2
+        assert data["usage"]["claude-opus-4-8"]["calls"] == 4
 
     def test_passes_rounds_to_debate(self, tmp_path):
         panel_file = self._panel_file(tmp_path)
-        mock_run = MagicMock(return_value=SAMPLE_TRANSCRIPT)
+        mock_run = MagicMock(return_value=(SAMPLE_TRANSCRIPT, SAMPLE_USAGE))
         p1, p2, p3, p4 = self._patches(tmp_path, run_debate=mock_run)
         with p1, p2, p3, p4:
             argv = ["run_debate.py", "--input", str(panel_file), "--rounds", "3"]
