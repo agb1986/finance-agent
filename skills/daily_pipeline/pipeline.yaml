@@ -21,3 +21,13 @@ email:
   subject_prefix: "Daily Finance Report"
 
 retention_days: 14   # prune run directories older than this
+
+# USD per million tokens, used only to estimate the cost shown in the report.
+# Edit when Anthropic pricing changes — an unlisted model reports tokens but no
+# cost, so add a row here whenever roles.yaml or report.py gains a new model.
+pricing:
+  currency: "$"
+  models:
+    claude-sonnet-4-6: {input: 3.00, output: 15.00}   # trader panel
+    claude-opus-4-8: {input: 5.00, output: 25.00}     # trader debate + judge
+    claude-opus-5: {input: 5.00, output: 25.00}       # executive summary

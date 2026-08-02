@@ -17,6 +17,7 @@ from pathlib import Path
 
 from common.args import base_parser
 from common.logger import setup
+from common.usage import merge
 from trader.client import get_client
 from trader.debate import run_debate
 from trader.roles import load_config
@@ -51,10 +52,14 @@ def main() -> None:
     try:
         client = get_client()
         config = load_config()
-        transcript = run_debate(client, config, symbol, panel, args.rounds)
+        transcript, used = run_debate(client, config, symbol, panel, args.rounds)
     except Exception as exc:
         logger.error(f"debate failed for {symbol!r}: {exc}")
         sys.exit(1)
+
+    # Carry the panel's tokens forward — the verdict file is the only artifact
+    # the daily pipeline reads, so the running total has to travel with it.
+    running = merge(data.get("usage"), used)
 
     TMP_DIR.mkdir(parents=True, exist_ok=True)
     timestamp = time.strftime("%Y%m%d_%H%M%S")
@@ -67,6 +72,7 @@ def main() -> None:
                 "rounds": args.rounds,
                 "panel": panel,
                 "transcript": transcript,
+                "usage": running,
             },
             indent=2,
         )

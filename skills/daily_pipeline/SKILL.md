@@ -1,6 +1,6 @@
 ---
 name: daily-pipeline
-version: 0.1.1
+version: 0.1.2
 description: Runs the full daily finance pipeline — fetches and ranks news, extracts top ticker mentions, fetches portfolios, runs the trader on the most relevant symbols, builds a Markdown report, and emails it. Use when the user asks for the daily report, the full pipeline, or a morning briefing.
 ---
 
@@ -23,8 +23,15 @@ Thresholds and caps live in `pipeline.yaml`; company-name → ticker mappings in
 `ticker_map.json`. Edit both without touching code.
 
 > **Cost note:** each trader run makes 10 API calls (5× Sonnet, 5× Opus),
-> roughly $0.30–0.60. `trader.max_runs` (default 2) caps the daily total; the
-> verdict cache cuts repeat spend.
+> measured at ~$0.16. `trader.max_runs` (default 2) caps the daily total at
+> roughly $0.35 including the ~$0.02 executive summary; the verdict cache cuts
+> repeat spend further. Every report ends with a **Token usage** table showing actual
+> tokens and estimated cost per model, so the real figure is measured rather
+> than assumed. Rates live in `pipeline.yaml` under `pricing` — a model with no
+> configured rate still has its tokens counted but is named as unpriced.
+>
+> Tokens attached to a *cached* verdict were charged on an earlier day, so they
+> are reported on a separate line rather than added to today's total.
 
 ## When to invoke
 

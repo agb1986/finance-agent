@@ -17,6 +17,7 @@ from pathlib import Path
 
 from common.args import base_parser
 from common.logger import setup
+from daily_pipeline.config import load_config
 from daily_pipeline.report import build_report
 
 TMP_DIR = Path(__file__).parent.parent / "tmp"
@@ -52,6 +53,7 @@ def main() -> None:
         verdicts=[{"path": str(v), "cached": False} for v in args.verdict],
         stages={},
         with_summary=not args.no_summary,
+        pricing=load_config().get("pricing"),
     )
 
     TMP_DIR.mkdir(parents=True, exist_ok=True)

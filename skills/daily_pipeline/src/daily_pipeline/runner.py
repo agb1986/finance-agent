@@ -357,6 +357,7 @@ def run_pipeline(
             verdicts=verdicts,
             stages=manifest["stages"],
             with_summary=with_summary,
+            pricing=config.get("pricing"),
         )
         report_path = run_dir / "report.md"
         report_path.write_text(report_body)

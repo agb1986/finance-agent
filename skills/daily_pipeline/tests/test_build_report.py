@@ -4,6 +4,7 @@ import json
 import logging
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -127,33 +128,46 @@ class TestFormatters:
 
 # ── generate_summary ──────────────────────────────────────────────────────────
 
+_USAGE = SimpleNamespace(
+    input_tokens=1000,
+    output_tokens=200,
+    cache_read_input_tokens=0,
+    cache_creation_input_tokens=0,
+)
+
 
 class TestGenerateSummary:
     def test_no_api_key_returns_none(self, monkeypatch):
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        assert report_mod.generate_summary("body") is None
+        assert report_mod.generate_summary("body") == (None, {})
 
     def test_returns_text_block(self, monkeypatch):
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
         block = MagicMock(type="text", text="Summary here.")
-        response = MagicMock(stop_reason="end_turn", content=[block])
+        response = MagicMock(stop_reason="end_turn", content=[block], usage=_USAGE)
         client = MagicMock()
         client.messages.create.return_value = response
         with patch("anthropic.Anthropic", return_value=client):
-            assert report_mod.generate_summary("body") == "Summary here."
+            text, used = report_mod.generate_summary("body")
+        assert text == "Summary here."
+        assert used["claude-opus-5"]["input_tokens"] == 1000
 
     def test_refusal_returns_none(self, monkeypatch):
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
-        response = MagicMock(stop_reason="refusal", content=[])
+        response = MagicMock(stop_reason="refusal", content=[], usage=_USAGE)
         client = MagicMock()
         client.messages.create.return_value = response
         with patch("anthropic.Anthropic", return_value=client):
-            assert report_mod.generate_summary("body") is None
+            text, used = report_mod.generate_summary("body")
+        # A refused call still burned tokens — report them even though the
+        # summary is dropped.
+        assert text is None
+        assert used["claude-opus-5"]["calls"] == 1
 
     def test_exception_returns_none(self, monkeypatch):
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
         with patch("anthropic.Anthropic", side_effect=RuntimeError("boom")):
-            assert report_mod.generate_summary("body") is None
+            assert report_mod.generate_summary("body") == (None, {})
 
 
 # ── build_report ──────────────────────────────────────────────────────────────
@@ -200,7 +214,7 @@ class TestBuildReport:
 
     def test_summary_inserted_at_top(self, tmp_path):
         analysis, tickers, _ = self._fixture_paths(tmp_path)
-        with patch.object(report_mod, "generate_summary", return_value="Exec summary."):
+        with patch.object(report_mod, "generate_summary", return_value=("Exec summary.", {})):
             body = report_mod.build_report(
                 date="2026-08-01",
                 analysis_path=str(analysis),

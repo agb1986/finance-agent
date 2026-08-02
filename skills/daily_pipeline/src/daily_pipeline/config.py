@@ -16,6 +16,14 @@ DEFAULTS: dict[str, Any] = {
     "trader": {"max_runs": 2, "verdict_cache_days": 3, "rounds": 2},
     "email": {"subject_prefix": "Daily Finance Report"},
     "retention_days": 14,
+    "pricing": {
+        "currency": "$",
+        "models": {
+            "claude-sonnet-4-6": {"input": 3.00, "output": 15.00},
+            "claude-opus-4-8": {"input": 5.00, "output": 25.00},
+            "claude-opus-5": {"input": 5.00, "output": 25.00},
+        },
+    },
 }
 
 

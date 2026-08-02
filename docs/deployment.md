@@ -155,9 +155,14 @@ docker compose run --rm \
 ```
 
 The cost-relevant knob is `trader.max_runs` (default **2**). Each trader run is
-~10 Anthropic calls (5× Sonnet, 5× Opus), roughly $0.30–0.60, so the default
-caps a worst-case day at ~$0.60–1.20. The 3-day verdict cache means steady-state
-spend is lower.
+10 Anthropic calls (5× Sonnet, 5× Opus) and **measured at ~$0.16**, so the
+default caps a worst-case day at roughly **$0.35** including the ~$0.02
+executive summary. The 3-day verdict cache means steady-state spend is lower —
+a day where every verdict is cached costs only the summary call.
+
+You do not have to trust that estimate: every report ends with a **Token usage**
+table giving actual tokens and cost per model for that run, with cached verdicts
+reported on a separate line so they never inflate the day's total.
 
 ## Troubleshooting
 

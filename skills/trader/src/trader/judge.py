@@ -34,7 +34,9 @@ def parse_verdict(text: str) -> dict:
         return {"raw": text, "parse_error": str(exc)}
 
 
-def run_judge(client: Anthropic, config: dict, symbol: str, transcript: list[dict]) -> dict:
+def run_judge(
+    client: Anthropic, config: dict, symbol: str, transcript: list[dict]
+) -> tuple[dict, dict]:
     """
     Score the debate transcript with the judge role.
 
@@ -45,13 +47,14 @@ def run_judge(client: Anthropic, config: dict, symbol: str, transcript: list[dic
         transcript: Debate transcript from run_debate.
 
     Returns:
-        The parsed verdict dict (scorecard, winner, confidence, key fields), or a
-        {"raw", "parse_error"} fallback if the judge returned malformed JSON.
+        ``(verdict, usage)`` — the parsed verdict dict (scorecard, winner,
+        confidence, key fields), or a {"raw", "parse_error"} fallback if the
+        judge returned malformed JSON, plus this call's token usage.
     """
     logger = get_logger()
     model = config["models"]["judge"]
     logger.debug(f"run_judge: scoring {len(transcript)} transcript entries on {model!r}")
 
     prompt = f"Stock: {symbol}\n\nDEBATE TRANSCRIPT:\n{format_transcript(transcript)}"
-    text = call_role(client, model, config["judge"], prompt, config["max_tokens"]["judge"])
-    return parse_verdict(text)
+    text, used = call_role(client, model, config["judge"], prompt, config["max_tokens"]["judge"])
+    return parse_verdict(text), used
