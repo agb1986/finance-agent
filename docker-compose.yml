@@ -1,6 +1,20 @@
+# Both services share one image (built once) but differ in lifecycle:
+# finance-mcp is a long-running server, finance-pipeline is a one-shot job.
+
+# Skill output directories that must survive container recreation. Named volumes
+# rather than bind mounts: Docker seeds them from the image, so they inherit the
+# non-root `app` ownership instead of arriving root-owned and unwritable.
+x-skill-volumes: &skill-volumes
+  - daily-pipeline-tmp:/app/skills/daily_pipeline/tmp
+  - trader-tmp:/app/skills/trader/tmp
+  - financial-news-tmp:/app/skills/financial_news/tmp
+  - stock-portfolio-tmp:/app/skills/get_stock_portfolio/tmp
+  - crypto-portfolio-tmp:/app/skills/get_crypto_portfolio/tmp
+
 services:
   finance-mcp:
     build: .
+    image: finance-agent:latest
     container_name: finance-mcp
     # Bind to localhost only — not exposed to the wider network
     ports:
@@ -8,4 +22,28 @@ services:
     # API keys are read from a .env file at the repo root (see .env.example)
     env_file:
       - .env
+    volumes: *skill-volumes
     restart: unless-stopped
+
+  finance-pipeline:
+    build: .
+    image: finance-agent:latest
+    # Behind a profile so `docker compose up` starts only the MCP server.
+    # `docker compose run` activates the profile automatically:
+    #     docker compose run --rm finance-pipeline
+    profiles:
+      - pipeline
+    command: ["uv", "run", "skills/daily_pipeline/scripts/run_daily.py"]
+    env_file:
+      - .env
+    volumes: *skill-volumes
+    # One-shot job, not a service — never restart it. Re-firing is cron's job,
+    # and the pipeline's date-keyed manifest makes a re-fire resume, not repeat.
+    restart: "no"
+
+volumes:
+  daily-pipeline-tmp:
+  trader-tmp:
+  financial-news-tmp:
+  stock-portfolio-tmp:
+  crypto-portfolio-tmp:

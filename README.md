@@ -171,6 +171,34 @@ uv run python -c "import check_stock, check_crypto, financial_news, get_stock_po
 
 ---
 
+## Deployment
+
+The `/daily-pipeline` skill is designed to run unattended on a home server
+(CasaOS): cron fires a one-shot container once a day, which fetches news, runs
+the trader on the most relevant symbols, builds a Markdown report, and emails it.
+
+```bash
+cp .env.example .env && $EDITOR .env   # API keys, SMTP, timezone
+docker compose build
+
+# Preview without spending anything
+docker compose run --rm finance-pipeline \
+  uv run skills/daily_pipeline/scripts/run_daily.py --dry-run
+
+# Full run, as cron will invoke it
+docker compose run --rm finance-pipeline
+```
+
+The same image also serves the MCP server (`docker compose up -d finance-mcp`),
+a long-running service on `127.0.0.1:35001`. The pipeline sits behind a Compose
+profile so `docker compose up` does not start it.
+
+See **[docs/deployment.md](docs/deployment.md)** for the full guide — Gmail app
+passwords, the cron entry, reading reports out of the named volumes, and cost
+tuning.
+
+---
+
 ## Development
 
 ### Run tests
@@ -201,7 +229,12 @@ finance-agent/
 │   ├── check_crypto/          # CoinGecko — quotes, history, charts
 │   ├── financial_news/        # RSS news fetch + semantic ranking
 │   ├── get_stock_portfolio/   # Trading212 portfolio — account summary + positions
-│   └── get_crypto_portfolio/  # Crypto.com portfolio — account balance + positions
+│   ├── get_crypto_portfolio/  # Crypto.com portfolio — account balance + positions
+│   ├── trader/                # Analyst panel → debate → judge verdict
+│   └── daily_pipeline/        # Checkpointed orchestrator — news → trader → report → email
+├── mcp_server/                # Exposes all skills as MCP tools over SSE
+├── Dockerfile                 # One image: MCP server + daily pipeline
+├── docker-compose.yml
 └── pyproject.toml             # uv workspace root
 ```
 

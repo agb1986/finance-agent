@@ -1,6 +1,6 @@
 ---
 name: daily-pipeline
-version: 0.1.0
+version: 0.1.1
 description: Runs the full daily finance pipeline — fetches and ranks news, extracts top ticker mentions, fetches portfolios, runs the trader on the most relevant symbols, builds a Markdown report, and emails it. Use when the user asks for the daily report, the full pipeline, or a morning briefing.
 ---
 
@@ -22,8 +22,9 @@ a cron re-fire never repeats completed API spend. Trader verdicts newer than
 Thresholds and caps live in `pipeline.yaml`; company-name → ticker mappings in
 `ticker_map.json`. Edit both without touching code.
 
-> **Cost note:** each trader run makes 10 API calls (5× Sonnet, 5× Opus).
-> `trader.max_runs` caps the daily total; the verdict cache cuts repeat spend.
+> **Cost note:** each trader run makes 10 API calls (5× Sonnet, 5× Opus),
+> roughly $0.30–0.60. `trader.max_runs` (default 2) caps the daily total; the
+> verdict cache cuts repeat spend.
 
 ## When to invoke
 
@@ -122,6 +123,19 @@ uv run skills/daily_pipeline/scripts/select_candidates.py --input <portfolio.jso
 uv run skills/daily_pipeline/scripts/build_report.py --analysis <a.json> --tickers <t.json> [--portfolio <p.json>] [--verdict <v.json>]...
 uv run skills/daily_pipeline/scripts/send_email.py --report <report.md> [--subject "..."]
 ```
+
+## Unattended runs (container)
+
+For scheduled runs this skill ships as a one-shot container invoked by host
+cron — see `docs/deployment.md`. The equivalent of Step 2 there is:
+
+```bash
+docker compose run --rm finance-pipeline
+```
+
+Steps 0–3 above still apply when running interactively from a checkout. Inside
+the container all credentials come from `.env` (no keyring), and run artifacts
+persist in named volumes rather than the working tree.
 
 ## Known limitations (v1)
 

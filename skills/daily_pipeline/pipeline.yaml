@@ -13,7 +13,7 @@ portfolio:
   max_candidates: 3         # cap on portfolio-gated trader candidates
 
 trader:
-  max_runs: 8              # hard cap on trader pipelines per day (10 API calls each)
+  max_runs: 2              # hard cap on trader pipelines per day (10 API calls each)
   verdict_cache_days: 3    # reuse an existing verdict newer than this many days
   rounds: 2                # debate rounds passed to run_debate.py
 

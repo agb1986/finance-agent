@@ -1,0 +1,41 @@
+# Keep the build context small and reproducible. Without this, the multi-GB
+# local .venv and the whole .git history get shipped to the daemon on every build.
+
+# Environments
+.venv/
+.env
+.envrc
+
+# VCS
+.git/
+.gitignore
+
+# Caches / build artifacts
+__pycache__/
+*.py[codz]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Skill run artifacts — these live in named volumes at runtime, never in the image
+skills/*/tmp/
+
+# Agent/editor scratch
+prompt.md
+output.md
+.claude/
+.vscode/
+.idea/
+
+# Container definitions and docs (not needed inside the image).
+# README.md is deliberately kept — the root pyproject references it as its readme.
+Dockerfile
+.dockerignore
+docker-compose.yml
+docs/

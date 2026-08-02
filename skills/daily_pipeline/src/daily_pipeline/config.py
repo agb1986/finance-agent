@@ -13,7 +13,7 @@ DEFAULTS: dict[str, Any] = {
     "news": {"hours": 24, "min_semantic": 0.40},
     "tickers": {"top_n": 5},
     "portfolio": {"min_abs_pnl_pct": 5.0, "min_position_value": 25.0, "max_candidates": 3},
-    "trader": {"max_runs": 8, "verdict_cache_days": 3, "rounds": 2},
+    "trader": {"max_runs": 2, "verdict_cache_days": 3, "rounds": 2},
     "email": {"subject_prefix": "Daily Finance Report"},
     "retention_days": 14,
 }

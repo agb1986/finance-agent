@@ -194,7 +194,7 @@ class TestPlan:
     def test_reflects_config(self):
         steps = plan(DEFAULTS)
         assert any("--hours 24" in s for s in steps)
-        assert any("max 8 runs" in s for s in steps)
+        assert any("max 2 runs" in s for s in steps)
 
 
 # ── run_pipeline ──────────────────────────────────────────────────────────────
