@@ -13,6 +13,12 @@ from sentence_transformers import SentenceTransformer, util
 
 MODEL_NAME = "all-MiniLM-L6-v2"
 
+# Matching this many keywords scores 1.0. A capped count keeps scores meaningful
+# regardless of how many keywords are configured — with the old
+# fraction-of-all-keywords formula, one hit out of 12 keywords scored 0.083 and
+# thresholds like --min-keyword 0.5 were effectively unreachable.
+KEYWORD_SCORE_CAP = 3
+
 
 def find_latest_news(tmp_dir: Path) -> Path:
     """Return the most recently created news_results JSON in tmp_dir."""
@@ -35,11 +41,12 @@ def load_keywords(config_path: Path) -> list[str]:
 def compute_keyword_score(text: str, keywords: list[str]) -> tuple[float, list[str]]:
     """Return (score, matched_keywords) for the given text against the keyword list.
 
-    Score is the fraction of keywords found in the text (0.0–1.0).
+    Score is the number of distinct keywords found, capped at KEYWORD_SCORE_CAP
+    and normalised to 0.0–1.0 (1 match = 1/3, 2 = 2/3, 3+ = 1.0).
     """
     text_lower = text.lower()
     matched = [kw for kw in keywords if kw in text_lower]
-    score = len(matched) / len(keywords)
+    score = min(len(matched), KEYWORD_SCORE_CAP) / KEYWORD_SCORE_CAP
     return round(score, 4), matched
 
 

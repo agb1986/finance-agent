@@ -1,6 +1,6 @@
 ---
 name: daily-pipeline
-version: 0.1.2
+version: 0.1.3
 description: Runs the full daily finance pipeline — fetches and ranks news, extracts top ticker mentions, fetches portfolios, runs the trader on the most relevant symbols, builds a Markdown report, and emails it. Use when the user asks for the daily report, the full pipeline, or a morning briefing.
 ---
 
@@ -10,9 +10,15 @@ Orchestrates the other skills into one checkpointed daily run:
 
 ```
 fetch_news → analyze_news → extract_tickers ─┐
-stock_portfolio → select_candidates ─────────┼→ trader (per symbol) → build_report → send_email
-crypto_portfolio (artifact only, v1) ────────┘
+stock_portfolio → select_candidates ─────────┼→ market context → trader (per symbol) → build_report → send_email
+crypto_portfolio (rendered in report) ───────┘
 ```
+
+Before each trader run the pipeline fetches the symbol's quote and history via
+`check_stock` (free Yahoo data) and passes a condensed context file to the
+analyst panel, so verdicts are grounded in current prices rather than training
+data. The lookback is `trader.history_period` in `pipeline.yaml`. If the fetch
+fails the panel still runs, just ungrounded.
 
 Each run writes to `tmp/run_<YYYYMMDD>/` with a `manifest.json` checkpoint —
 re-running the same day resumes from the first incomplete stage, so a crash or
@@ -108,8 +114,9 @@ skills/daily_pipeline/tmp/run_20260801/report.md
 ```
 
 If SMTP is not configured, pass `--skip-email`. On stage failure the script
-exits non-zero with the failing stage in the error log — re-running resumes
-from that stage.
+exits non-zero with the failing stage in the error log, and sends a best-effort
+failure alert email using the same SMTP settings as the report — re-running
+resumes from the failed stage.
 
 ### Step 3 — Present the result
 
@@ -127,7 +134,7 @@ Each stage is also runnable standalone (all print their output path on stdout):
 ```bash
 uv run skills/daily_pipeline/scripts/extract_tickers.py --input <analysis.json> [--top-n 5]
 uv run skills/daily_pipeline/scripts/select_candidates.py --input <portfolio.json> [--min-pnl-pct 5]
-uv run skills/daily_pipeline/scripts/build_report.py --analysis <a.json> --tickers <t.json> [--portfolio <p.json>] [--verdict <v.json>]...
+uv run skills/daily_pipeline/scripts/build_report.py --analysis <a.json> --tickers <t.json> [--portfolio <p.json>] [--crypto <c.json>] [--verdict <v.json>]...
 uv run skills/daily_pipeline/scripts/send_email.py --report <report.md> [--subject "..."]
 ```
 
@@ -146,7 +153,5 @@ persist in named volumes rather than the working tree.
 
 ## Known limitations (v1)
 
-- The crypto portfolio is fetched and recorded as an artifact but not yet
-  rendered in the report, and crypto holdings are not gated into trader runs.
-- The trader panel runs without a market-data context file; wiring
-  `check_stock` quotes in as context is a planned improvement.
+- Crypto holdings are rendered in the report but not yet gated into trader
+  runs — only stock positions feed `select_candidates`.

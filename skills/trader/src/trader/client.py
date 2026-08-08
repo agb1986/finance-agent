@@ -36,7 +36,12 @@ def get_client() -> Anthropic:
 
 
 def call_role(
-    client: Anthropic, model: str, system: str, user_message: str, max_tokens: int
+    client: Anthropic,
+    model: str,
+    system: str,
+    user_message: str,
+    max_tokens: int,
+    output_schema: dict | None = None,
 ) -> tuple[str, dict]:
     """
     Send one stateless message to a role and return its text plus token usage.
@@ -51,6 +56,8 @@ def call_role(
         system: The role's system prompt.
         user_message: The full context for this call.
         max_tokens: Response token cap for this role.
+        output_schema: Optional JSON schema. When given, the API constrains the
+            response to valid JSON matching it (structured outputs).
 
     Returns:
         ``(text, usage)`` — the response text and a per-model usage dict
@@ -61,12 +68,15 @@ def call_role(
         f"call_role: model={model!r}, max_tokens={max_tokens}, prompt_chars={len(user_message)}"
     )
 
-    response = client.messages.create(
-        model=model,
-        max_tokens=max_tokens,
-        system=system,
-        messages=[{"role": "user", "content": user_message}],
-    )
+    request: dict = {
+        "model": model,
+        "max_tokens": max_tokens,
+        "system": system,
+        "messages": [{"role": "user", "content": user_message}],
+    }
+    if output_schema is not None:
+        request["output_config"] = {"format": {"type": "json_schema", "schema": output_schema}}
+    response = client.messages.create(**request)
     text = "".join(block.text for block in response.content if block.type == "text")
     used = record(model, getattr(response, "usage", None))
 

@@ -13,7 +13,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 import fetch_news
-from financial_news.fetcher import fetch_feed, strip_html
+from financial_news.fetcher import dedup_articles, fetch_feed, strip_html
 
 
 @pytest.fixture(autouse=True)
@@ -31,14 +31,25 @@ FUTURE = time.gmtime(9_999_999_999)
 
 def _make_entry(title: str = "Test", published: time.struct_time = FUTURE, no_date: bool = False):
     pub = None if no_date else published
+    slug = title.lower().replace(" ", "-")
     entry = MagicMock()
     entry.get = lambda key, default="": {
         "title": title,
         "summary": f"<b>{title} summary</b>",
-        "link": "https://example.com/article",
+        "link": f"https://example.com/{slug}",
         "published_parsed": pub,
     }.get(key, default)
     return entry
+
+
+def _article(title: str = "Test", url: str | None = None, published_at: str = "2026-01-01") -> dict:
+    return {
+        "title": title,
+        "summary": f"{title} summary",
+        "url": url if url is not None else f"https://example.com/{title.lower()}",
+        "published_at": published_at,
+        "source": "Feed",
+    }
 
 
 def _make_feed(entries: list | None = None, bozo: bool = False):
@@ -108,7 +119,7 @@ class TestFetchFeed:
         r = result[0]
         assert r["title"] == "Fresh"
         assert r["source"] == "TestFeed"
-        assert r["url"] == "https://example.com/article"
+        assert r["url"] == "https://example.com/fresh"
         assert "Fresh summary" in r["summary"]
         assert "published_at" in r
 
@@ -130,6 +141,44 @@ class TestFetchFeed:
         with patch("feedparser.parse", return_value=_make_feed(entries=entries)):
             result = fetch_feed("Feed", "http://x.com", CUTOFF)
         assert len(result) == 3
+
+
+# ── dedup_articles ────────────────────────────────────────────────────────────
+
+
+class TestDedupArticles:
+    def test_empty_list(self):
+        assert dedup_articles([]) == []
+
+    def test_unique_articles_untouched(self):
+        articles = [_article("One"), _article("Two"), _article("Three")]
+        assert dedup_articles(articles) == articles
+
+    def test_same_url_dropped(self):
+        first = _article("Fed cuts rates", url="https://example.com/a")
+        copy = _article("Fed cuts rates (updated)", url="https://example.com/a")
+        assert dedup_articles([first, copy]) == [first]
+
+    def test_url_match_ignores_case_and_trailing_slash(self):
+        first = _article("One", url="https://Example.com/Story/")
+        copy = _article("Two", url="https://example.com/story")
+        assert dedup_articles([first, copy]) == [first]
+
+    def test_same_normalised_title_dropped(self):
+        first = _article("Fed Cuts Rates!", url="https://a.com/1")
+        copy = _article("fed cuts rates", url="https://b.com/2")
+        assert dedup_articles([first, copy]) == [first]
+
+    def test_first_occurrence_kept(self):
+        first = _article("Story", url="https://a.com/1")
+        second = _article("Story", url="https://b.com/2")
+        result = dedup_articles([first, second])
+        assert result == [first]
+
+    def test_missing_url_and_title_not_treated_as_duplicates(self):
+        a = {"title": "", "url": "", "summary": "x", "published_at": "", "source": "F"}
+        b = {"title": "", "url": "", "summary": "y", "published_at": "", "source": "F"}
+        assert dedup_articles([a, b]) == [a, b]
 
 
 # ── main ──────────────────────────────────────────────────────────────────────

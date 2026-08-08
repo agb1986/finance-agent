@@ -16,7 +16,7 @@ from pathlib import Path
 
 from common.args import base_parser
 from common.logger import setup
-from financial_news.fetcher import FEEDS, fetch_feed
+from financial_news.fetcher import FEEDS, dedup_articles, fetch_feed
 
 TMP_DIR = Path(__file__).parent.parent / "tmp"
 
@@ -39,8 +39,9 @@ def main() -> None:
         articles = fetch_feed(name, url, cutoff)
         all_articles.extend(articles)
 
+    all_articles = dedup_articles(all_articles)
     all_articles.sort(key=lambda a: a["published_at"], reverse=True)
-    logger.debug(f"total articles after sort: {len(all_articles)}")
+    logger.debug(f"total articles after dedup + sort: {len(all_articles)}")
 
     TMP_DIR.mkdir(exist_ok=True)
     timestamp = time.strftime("%Y%m%d_%H%M%S")

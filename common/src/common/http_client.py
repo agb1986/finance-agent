@@ -1,8 +1,18 @@
 """Generic HTTP client using requests.Session, shared across all skills."""
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from common.logger import get_logger
+
+USER_AGENT = "finance-agent/0.1 (+https://github.com/agb1986/finance-agent)"
+
+# The pipeline runs unattended, so transient failures (CoinGecko 429s, feed
+# hiccups, 5xx blips) must not fail a stage outright. Retry respects Retry-After.
+DEFAULT_RETRIES = 3
+DEFAULT_BACKOFF = 1.0
+RETRY_STATUSES = (429, 500, 502, 503, 504)
 
 
 class HttpClient:
@@ -13,12 +23,24 @@ class HttpClient:
         base_url: str,
         headers: dict[str, str] | None = None,
         timeout: int = 30,
+        retries: int = DEFAULT_RETRIES,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self.session = requests.Session()
+        self.session.headers["User-Agent"] = USER_AGENT
         if headers:
             self.session.headers.update(headers)
+        retry = Retry(
+            total=retries,
+            backoff_factor=DEFAULT_BACKOFF,
+            status_forcelist=RETRY_STATUSES,
+            allowed_methods=("GET", "POST"),
+            respect_retry_after_header=True,
+        )
+        adapter = HTTPAdapter(max_retries=retry)
+        self.session.mount("https://", adapter)
+        self.session.mount("http://", adapter)
 
     def get(self, path: str, params: dict | None = None) -> dict | list:
         """Perform a GET request and return the parsed JSON response.

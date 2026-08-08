@@ -19,6 +19,7 @@ from pathlib import Path
 from common.logger import get_logger
 
 from daily_pipeline import candidates as candidates_mod
+from daily_pipeline import context as context_mod
 from daily_pipeline import report as report_mod
 from daily_pipeline import tickers as tickers_mod
 from daily_pipeline.emailer import send_report
@@ -33,6 +34,8 @@ SCRIPTS = {
     "analyze_news": "skills/financial_news/scripts/analyze_news.py",
     "stock_portfolio": "skills/get_stock_portfolio/scripts/fetch_portfolio.py",
     "crypto_portfolio": "skills/get_crypto_portfolio/scripts/fetch_portfolio.py",
+    "fetch_quote": "skills/check_stock/scripts/fetch_quote.py",
+    "fetch_history": "skills/check_stock/scripts/fetch_history.py",
     "run_panel": "skills/trader/scripts/run_panel.py",
     "run_debate": "skills/trader/scripts/run_debate.py",
     "run_judge": "skills/trader/scripts/run_judge.py",
@@ -118,7 +121,7 @@ def record_stage(
 
 
 def acquire_lock(run_dir: Path) -> Path:
-    """Create a lock file; refuse to start when a fresh lock already exists.
+    """Atomically create a lock file; refuse to start when a fresh lock exists.
 
     Raises:
         StageError: If another run appears to be in progress.
@@ -130,7 +133,12 @@ def acquire_lock(run_dir: Path) -> Path:
             raise StageError(f"lock file {lock_path} is {age:.0f}s old — another run in progress?")
         get_logger().debug(f"removing stale lock ({age:.0f}s old)")
         lock_path.unlink()
-    lock_path.write_text(str(os.getpid()))
+    try:
+        # open("x") is atomic: two simultaneous cron fires cannot both win.
+        with lock_path.open("x") as f:
+            f.write(str(os.getpid()))
+    except FileExistsError as exc:
+        raise StageError(f"lock file {lock_path} appeared concurrently — another run won") from exc
     return lock_path
 
 
@@ -175,9 +183,38 @@ def find_cached_verdict(
     return newest[1] if newest else None
 
 
-def run_trader(symbol: str, rounds: int) -> str:
+def build_market_context(symbol: str, run_dir: Path, period: str) -> Path | None:
+    """Fetch quote + history via check_stock and write a compact context file.
+
+    Returns None when the fetch fails — the panel still runs, just ungrounded,
+    matching the trader's standalone behaviour. Grounding the panel in real
+    market data is what keeps the technical analyst's price levels honest.
+    """
+    logger = get_logger()
+    try:
+        quote_path = run_script(SCRIPTS["fetch_quote"], ["--symbol", symbol])
+        history_path = run_script(
+            SCRIPTS["fetch_history"], ["--symbol", symbol, "--period", period]
+        )
+    except StageError as exc:
+        logger.error(f"{symbol}: market data fetch failed ({exc}) — panel runs without context")
+        return None
+    with Path(quote_path).open() as f:
+        quote = json.load(f)
+    with Path(history_path).open() as f:
+        history = json.load(f)
+    context_path = run_dir / f"context_{symbol}.md"
+    context_path.write_text(context_mod.build_context(quote, history))
+    logger.debug(f"{symbol}: market context written to {context_path}")
+    return context_path
+
+
+def run_trader(symbol: str, rounds: int, context_file: str | None = None) -> str:
     """Run the three trader stages for a symbol and return the verdict path."""
-    panel_path = run_script(SCRIPTS["run_panel"], ["--symbol", symbol])
+    panel_args = ["--symbol", symbol]
+    if context_file:
+        panel_args += ["--context-file", context_file]
+    panel_path = run_script(SCRIPTS["run_panel"], panel_args)
     debate_path = run_script(
         SCRIPTS["run_debate"], ["--input", panel_path, "--rounds", str(rounds)]
     )
@@ -201,7 +238,8 @@ def plan(config: dict) -> list[str]:
         ),
         (
             f"trader (max {config['trader']['max_runs']} runs, "
-            f"verdict cache {config['trader']['verdict_cache_days']}d)"
+            f"verdict cache {config['trader']['verdict_cache_days']}d, "
+            f"grounded on {config['trader']['history_period']} market data)"
         ),
         "build_report",
         "send_email (skipped unless SMTP_* configured)",
@@ -331,12 +369,18 @@ def run_pipeline(
                 }
                 save_manifest(run_dir, manifest)
                 continue
+            context_path = build_market_context(symbol, run_dir, config["trader"]["history_period"])
             try:
-                verdict_path = run_trader(symbol, config["trader"]["rounds"])
+                verdict_path = run_trader(
+                    symbol,
+                    config["trader"]["rounds"],
+                    context_file=str(context_path) if context_path else None,
+                )
                 manifest["trader"][symbol] = {
                     "status": "done",
                     "verdict": verdict_path,
                     "cached": False,
+                    "context": str(context_path) if context_path else None,
                 }
             except StageError as exc:
                 logger.error(f"trader failed for {symbol}: {exc}")
@@ -349,6 +393,9 @@ def run_pipeline(
             for entry in manifest["trader"].values()
             if entry.get("status") == "done"
         ]
+        crypto_path = manifest["stages"].get("crypto_portfolio", {}).get("output")
+        if crypto_path and not Path(crypto_path).exists():
+            crypto_path = None
         report_body = report_mod.build_report(
             date=f"{date[:4]}-{date[4:6]}-{date[6:]}",
             analysis_path=analysis_path,
@@ -358,6 +405,7 @@ def run_pipeline(
             stages=manifest["stages"],
             with_summary=with_summary,
             pricing=config.get("pricing"),
+            crypto_path=crypto_path,
         )
         report_path = run_dir / "report.md"
         report_path.write_text(report_body)

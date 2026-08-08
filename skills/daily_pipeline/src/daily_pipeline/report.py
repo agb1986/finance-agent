@@ -97,6 +97,47 @@ def format_portfolio_section(portfolio: dict | None) -> str:
     return "\n".join(lines)
 
 
+def format_crypto_section(portfolio: dict | None) -> str:
+    """Render the Crypto.com balance and positions as Markdown."""
+    if not portfolio:
+        return "_Crypto portfolio fetch was skipped or failed (missing credentials?)._"
+    lines: list[str] = []
+    for balance in portfolio.get("balances", []):
+        lines.extend(
+            [
+                f"**Currency:** {balance.get('instrument_name', '?')}",
+                f"**Cash balance:** {_as_float(balance.get('total_cash_balance')):.2f}",
+                f"**Available:** {_as_float(balance.get('total_available_balance')):.2f}",
+                (
+                    "**Session unrealised PnL:** "
+                    f"{_as_float(balance.get('total_session_unrealized_pnl')):+.2f}"
+                ),
+                "",
+            ]
+        )
+    positions = portfolio.get("position_balances", [])
+    if positions:
+        lines.append("| Instrument | Quantity | Market value |")
+        lines.append("|---|---|---|")
+        for position in sorted(positions, key=lambda p: -_as_float(p.get("market_value"))):
+            lines.append(
+                f"| {position.get('instrument_name', '?')} "
+                f"| {position.get('quantity', '0')} "
+                f"| {_as_float(position.get('market_value')):.2f} |"
+            )
+    else:
+        lines.append("_No open crypto positions._")
+    return "\n".join(lines).rstrip()
+
+
+def _as_float(value: object) -> float:
+    """Crypto.com reports numbers as strings; coerce defensively."""
+    try:
+        return float(value or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def format_verdict_section(verdict_file: dict, cached: bool) -> str:
     """Render one trader verdict as the SKILL.md scorecard format."""
     symbol = verdict_file.get("symbol", "?")
@@ -184,6 +225,7 @@ def build_report(
     stages: dict,
     with_summary: bool = True,
     pricing: dict | None = None,
+    crypto_path: str | None = None,
 ) -> str:
     """Assemble the full Markdown report.
 
@@ -196,6 +238,7 @@ def build_report(
         stages:         Manifest stage dict for the run-status footer.
         with_summary:   Set False to skip the Claude executive-summary call.
         pricing:        The ``pricing`` config block used to cost the token usage.
+        crypto_path:    Path to the crypto portfolio JSON, or None.
 
     Returns:
         The complete report as a Markdown string.
@@ -204,6 +247,7 @@ def build_report(
     articles = _load_json(analysis_path) if analysis_path else []
     tickers = _load_json(tickers_path) if tickers_path else []
     portfolio = _load_json(portfolio_path) if portfolio_path else None
+    crypto = _load_json(crypto_path) if crypto_path else None
 
     sections = [
         f"# Daily Finance Report — {date}",
@@ -219,6 +263,10 @@ def build_report(
         "## Portfolio",
         "",
         format_portfolio_section(portfolio),
+        "",
+        "## Crypto portfolio",
+        "",
+        format_crypto_section(crypto),
         "",
         "## Trader verdicts",
         "",

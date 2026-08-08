@@ -9,7 +9,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
-from trader.judge import format_transcript, parse_verdict, run_judge
+from trader.judge import VERDICT_SCHEMA, format_transcript, parse_verdict, run_judge
 
 _spec = importlib.util.spec_from_file_location(
     "trader_run_judge", Path(__file__).parent.parent / "scripts" / "run_judge.py"
@@ -112,6 +112,26 @@ class TestRunJudge:
         call = client.messages.create.call_args
         assert call.kwargs["model"] == "claude-opus-4-8"
         assert call.kwargs["system"] == "You are the judge."
+
+    def test_enforces_verdict_schema_via_structured_outputs(self):
+        client = MagicMock()
+        client.messages.create.return_value = _fake_response("{}")
+
+        run_judge(client, SAMPLE_CONFIG, "AMZN", SAMPLE_TRANSCRIPT)
+
+        output_config = client.messages.create.call_args.kwargs["output_config"]
+        assert output_config == {"format": {"type": "json_schema", "schema": VERDICT_SCHEMA}}
+
+    def test_verdict_schema_objects_forbid_extra_properties(self):
+        # Structured outputs requires additionalProperties: false on every object.
+        def _check(schema: dict):
+            if schema.get("type") == "object":
+                assert schema["additionalProperties"] is False
+                assert "required" in schema
+                for sub in schema["properties"].values():
+                    _check(sub)
+
+        _check(VERDICT_SCHEMA)
 
     def test_prompt_contains_symbol_and_transcript(self):
         client = MagicMock()
