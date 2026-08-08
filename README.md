@@ -222,6 +222,13 @@ See **[docs/deployment.md](docs/deployment.md)** for the full guide — Gmail ap
 passwords, the cron entry, reading reports out of the named volumes, and cost
 tuning.
 
+`.ai-data-store.json` at the repo root opts this project into the
+[ai-data-store](https://github.com/agb1986/ai-data-store) PostToolUse hook: it
+maps each skill's `skills/*/tmp/*.json` artifacts to a description and
+keywords so verdicts, price checks, and portfolio snapshots get logged
+automatically as they're produced. It's config, not a secret, so it's tracked
+here rather than left as untracked host state.
+
 ---
 
 ## Development
