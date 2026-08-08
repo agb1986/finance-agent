@@ -4,6 +4,7 @@ Financial news fetching logic.
 Provides feed definitions and article fetching from RSS sources.
 """
 
+import re
 import time
 from html.parser import HTMLParser
 
@@ -72,3 +73,29 @@ def fetch_feed(name: str, url: str, since: time.struct_time) -> list[dict]:
 
     logger.debug(f"{name}: {len(articles)} articles matched")
     return articles
+
+
+def dedup_articles(articles: list[dict]) -> list[dict]:
+    """Drop articles that appear in more than one feed.
+
+    The same story is frequently syndicated across feeds (six of the feeds are
+    Investing.com), and each copy would count as a separate ticker mention
+    downstream. Match on URL first, then on normalised title; keep the first
+    occurrence in fetch order.
+    """
+    logger = get_logger()
+    seen_urls: set[str] = set()
+    seen_titles: set[str] = set()
+    unique: list[dict] = []
+    for article in articles:
+        url = (article.get("url") or "").strip().rstrip("/").lower()
+        title = re.sub(r"\W+", " ", (article.get("title") or "").lower()).strip()
+        if (url and url in seen_urls) or (title and title in seen_titles):
+            continue
+        if url:
+            seen_urls.add(url)
+        if title:
+            seen_titles.add(title)
+        unique.append(article)
+    logger.debug(f"deduped {len(articles) - len(unique)} of {len(articles)} articles")
+    return unique

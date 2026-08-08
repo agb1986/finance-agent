@@ -16,6 +16,7 @@ trader:
   max_runs: 2              # hard cap on trader pipelines per day (10 API calls each)
   verdict_cache_days: 3    # reuse an existing verdict newer than this many days
   rounds: 2                # debate rounds passed to run_debate.py
+  history_period: "6mo"    # check_stock lookback used to ground the panel with market data
 
 email:
   subject_prefix: "Daily Finance Report"

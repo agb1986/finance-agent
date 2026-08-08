@@ -174,9 +174,18 @@ reported on a separate line so they never inflate the day's total.
 | `lock file ... another run in progress?` | A previous run is still going, or died hard. Locks older than 6h are cleared automatically. |
 | Model download attempted at runtime | `HF_HUB_OFFLINE=1` is set because the model is baked in. If you change the embedding model, rebuild the image. |
 
-## Not yet done
+## Failure alerting
 
-- **Failure alerting** — a failed stage currently just exits non-zero into the
-  cron log; there is no push/email notification.
-- **CI/CD** — no GitHub Actions job builds and pushes the image to GHCR yet, so
-  the CasaOS host builds locally.
+When a required stage fails, the pipeline exits non-zero **and** sends a
+best-effort alert email ("Daily Finance Report — pipeline FAILED") using the
+same SMTP settings as the report. If SMTP itself is the failure, the alert is
+skipped and the error stays in the cron log.
+
+## CI/CD
+
+GitHub Actions runs tests + ruff on every PR (`.github/workflows/ci.yml`) and
+builds + pushes the image to GHCR on every merge to main
+(`.github/workflows/docker.yml`). To consume the prebuilt image on the CasaOS
+host instead of building locally, point the compose services at
+`ghcr.io/agb1986/finance-agent:latest` and run `docker compose pull` — the
+local `build:` fallback keeps working either way.

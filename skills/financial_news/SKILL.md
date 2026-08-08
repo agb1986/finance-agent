@@ -1,6 +1,6 @@
 ---
 name: financial-news
-version: 0.2.0
+version: 0.2.1
 description: Fetches and summarises financial news from RSS feeds. Use when the user asks about today's market news, recent market movements, crypto news, earnings reports, or stock picks.
 ---
 
@@ -51,7 +51,7 @@ skills/financial_news/tmp/news_results_20260315_143000.json
 
 ### Step 2 — Read the output file
 
-Read the file path returned in Step 1. It contains a JSON array of articles sorted newest-first:
+Read the file path returned in Step 1. It contains a JSON array of articles sorted newest-first, with duplicates (same URL or same title syndicated across feeds) already removed:
 
 ```json
 [
@@ -124,7 +124,7 @@ Read the file path returned in Step 2. It contains the same article array as the
 
 | Field | Description |
 |---|---|
-| `keyword_score` | Fraction of configured keywords found in the article text (0.0–1.0) |
+| `keyword_score` | Distinct keyword matches capped at 3, normalised to 0.0–1.0 (1 match = 0.33, 2 = 0.67, 3+ = 1.0) |
 | `semantic_score` | Cosine similarity between the article and keyword query using `all-MiniLM-L6-v2` (0.0–1.0) |
 | `matched_keywords` | List of keywords that were literally matched |
 | `rank` | Position after sorting by `semantic_score` descending |

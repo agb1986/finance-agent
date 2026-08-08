@@ -31,6 +31,7 @@ def main() -> None:
     parser.add_argument("--analysis", type=Path, default=None, help="News analysis JSON")
     parser.add_argument("--tickers", type=Path, default=None, help="Extracted tickers JSON")
     parser.add_argument("--portfolio", type=Path, default=None, help="Stock portfolio JSON")
+    parser.add_argument("--crypto", type=Path, default=None, help="Crypto portfolio JSON")
     parser.add_argument(
         "--verdict",
         type=Path,
@@ -50,6 +51,7 @@ def main() -> None:
         analysis_path=str(args.analysis) if args.analysis else None,
         tickers_path=str(args.tickers) if args.tickers else None,
         portfolio_path=str(args.portfolio) if args.portfolio else None,
+        crypto_path=str(args.crypto) if args.crypto else None,
         verdicts=[{"path": str(v), "cached": False} for v in args.verdict],
         stages={},
         with_summary=not args.no_summary,

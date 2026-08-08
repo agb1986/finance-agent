@@ -5,11 +5,16 @@ import os
 import subprocess
 from pathlib import Path
 
+from common.logger import get_logger, setup
 from mcp.server.fastmcp import FastMCP
 
 REPO_ROOT = Path(os.environ.get("REPO_ROOT", Path.cwd()))
 PORT = int(os.environ.get("MCP_PORT", "35001"))
 HOST = os.environ.get("MCP_HOST", "0.0.0.0")
+
+# Mirrors the daily pipeline's per-script cap. Without a timeout, one hung
+# yfinance call would wedge the tool call (and its SSE connection) forever.
+SCRIPT_TIMEOUT = 900
 
 mcp = FastMCP("Finance Agent", host=HOST, port=PORT)
 
@@ -21,14 +26,22 @@ mcp = FastMCP("Finance Agent", host=HOST, port=PORT)
 
 def _run(script: str, args: list[str]) -> str:
     """Run a skill script via uv run and return stripped stdout."""
-    result = subprocess.run(
-        ["uv", "run", script, *args],
-        capture_output=True,
-        text=True,
-        cwd=REPO_ROOT,
-    )
+    logger = get_logger()
+    logger.debug(f"running: {script} {' '.join(args)}")
+    try:
+        result = subprocess.run(
+            ["uv", "run", script, *args],
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
+            timeout=SCRIPT_TIMEOUT,
+        )
+    except subprocess.TimeoutExpired as exc:
+        logger.error(f"{script} timed out after {SCRIPT_TIMEOUT}s")
+        raise RuntimeError(f"Script '{script}' timed out after {SCRIPT_TIMEOUT}s") from exc
     if result.returncode != 0:
         detail = result.stderr.strip() or f"exit code {result.returncode}"
+        logger.error(f"{script} failed: {detail}")
         raise RuntimeError(f"Script '{script}' failed: {detail}")
     return result.stdout.strip()
 
@@ -156,4 +169,5 @@ def analyze_financial_news(hours: int = 24, min_semantic: float = 0.40) -> str:
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
+    setup(debug=os.environ.get("MCP_DEBUG", "") != "")
     mcp.run(transport="sse")

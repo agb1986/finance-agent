@@ -59,24 +59,27 @@ Fetches cryptocurrency quotes and OHLC history from CoinGecko, then generates AS
 
 ### `/financial-news`
 
-Fetches the latest financial news from 10 RSS feeds (MarketWatch, Yahoo Finance, CNBC, Investing.com, Motley Fool) and ranks articles by keyword match and semantic similarity using a local sentence-transformer model.
+Fetches the latest financial news from 10 RSS feeds (MarketWatch, Yahoo Finance, CNBC, Investing.com, Motley Fool), removes duplicates syndicated across feeds, and ranks articles by keyword match and semantic similarity using a local sentence-transformer model.
 
 **Usage**
 
 ```
 /financial-news
 /financial-news --hours 6
+/financial-news --min-semantic 0.40
 ```
 
-| Argument    | Required | Default | Description                              |
-|-------------|----------|---------|------------------------------------------|
-| `--hours`   | No       | `24`    | Look-back window in hours                |
-| `--keywords`| No       | —       | Path to a `keywords.json` config file    |
+| Argument         | Required | Default | Description                                    |
+|------------------|----------|---------|------------------------------------------------|
+| `--hours`        | No       | `24`    | Look-back window in hours                      |
+| `--keywords`     | No       | —       | Path to a `keywords.json` config file          |
+| `--min-semantic` | No       | —       | Only include articles with semantic score ≥ N  |
+| `--min-keyword`  | No       | —       | Only include articles with keyword score ≥ N   |
 
 **What it returns**
 
-- Fetched articles grouped by source, newest first
-- Ranked list with keyword score (0–1) and semantic score (0–1)
+- Fetched articles grouped by source, newest first, deduplicated by URL/title
+- Ranked list with keyword score (0–1; capped count — 1 match = 0.33, 3+ = 1.0) and semantic score (0–1)
 - Group 1 — keyword match **and** semantic score ≥ 0.45
 - Group 2 — semantic score ≥ 0.40 with no keyword match
 - An observation paragraph summarising score spread and relevance
@@ -123,18 +126,40 @@ No arguments. Requires `CRYPTO_API_KEY` and `CRYPTO_API_SECRET` environment vari
 
 ---
 
-### `/financial-news` — scoring filter
+### `/trader`
 
-The `analyze_news.py` script now accepts `--min-semantic` and `--min-keyword` flags to pre-filter articles before writing output, eliminating ad-hoc filtering steps.
+Runs a multi-agent investment analysis for a symbol: a five-role analyst panel (fundamental, technical, macro, sentiment, risk) in parallel, a fixed-rounds bull/bear debate over the panel's findings, and an impartial judge that scores the debate and returns a structured verdict.
+
+**Usage**
 
 ```
-/financial-news --min-semantic 0.40
+/trader --symbol AMZN
 ```
 
-| Argument         | Required | Default | Description                                    |
-|------------------|----------|---------|------------------------------------------------|
-| `--min-semantic` | No       | —       | Only include articles with semantic score ≥ N  |
-| `--min-keyword`  | No       | —       | Only include articles with keyword score ≥ N   |
+| Argument         | Required | Default | Description                                        |
+|------------------|----------|---------|----------------------------------------------------|
+| `--symbol`       | Yes      |         | Ticker symbol to analyse                           |
+| `--context-file` | No       | —       | Market data file to ground the panel (quote/history) |
+| `--rounds`       | No       | `2`     | Debate rounds                                      |
+
+**What it returns**
+
+- Panel briefs, debate transcript, and a judge scorecard (evidence quality, rebuttal validity, risk-adjusted logic, internal consistency, falsifiability) with winner, confidence, and an actionable verdict
+- The verdict JSON is schema-enforced via structured outputs
+
+> Each full run makes 10 Anthropic API calls (5× Sonnet panel, 4× Opus debate, 1× Opus judge), measured at ~$0.16. Models and prompts live in `skills/trader/config/roles.yaml`.
+
+---
+
+### `/daily-pipeline`
+
+Orchestrates everything into one checkpointed daily run: fetch + rank news, extract top ticker mentions, fetch portfolios, ground the trader with `check_stock` market data, run it on the most relevant symbols, build a Markdown report (with token usage and estimated cost), and email it. Re-running the same day resumes from the first incomplete stage; on failure it sends a best-effort alert email.
+
+```
+uv run skills/daily_pipeline/scripts/run_daily.py [--dry-run] [--skip-email] [--no-summary]
+```
+
+Thresholds, caps, and pricing live in `skills/daily_pipeline/pipeline.yaml`. See `skills/daily_pipeline/SKILL.md` for the full stage list and `docs/deployment.md` for running it on a schedule.
 
 ---
 
@@ -166,7 +191,7 @@ uv run python --version
 test -d .venv && echo "venv OK"
 
 # Key packages
-uv run python -c "import check_stock, check_crypto, financial_news, get_stock_portfolio, get_crypto_portfolio, common" && echo "All packages OK"
+uv run python -c "import check_stock, check_crypto, financial_news, get_stock_portfolio, get_crypto_portfolio, trader, daily_pipeline, mcp_server, common" && echo "All packages OK"
 ```
 
 ---

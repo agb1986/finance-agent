@@ -81,6 +81,23 @@ PORTFOLIO = {
 }
 
 
+CRYPTO = {
+    "fetched_at": "2026-08-08T07:00:00Z",
+    "balances": [
+        {
+            "instrument_name": "USD",
+            "total_cash_balance": "1250.50",
+            "total_available_balance": "1000.00",
+            "total_session_unrealized_pnl": "-12.34",
+        }
+    ],
+    "position_balances": [
+        {"instrument_name": "BTC", "quantity": "0.015", "market_value": "900.00"},
+        {"instrument_name": "SOL", "quantity": "5", "market_value": "350.50"},
+    ],
+}
+
+
 # ── section formatters ────────────────────────────────────────────────────────
 
 
@@ -109,6 +126,32 @@ class TestFormatters:
 
     def test_portfolio_section_none(self):
         assert "skipped or failed" in report_mod.format_portfolio_section(None)
+
+    def test_crypto_section_renders_balance_and_positions(self):
+        result = report_mod.format_crypto_section(CRYPTO)
+        assert "**Currency:** USD" in result
+        assert "**Cash balance:** 1250.50" in result
+        assert "**Session unrealised PnL:** -12.34" in result
+        assert "| BTC | 0.015 | 900.00 |" in result
+
+    def test_crypto_section_positions_sorted_by_value(self):
+        result = report_mod.format_crypto_section(CRYPTO)
+        assert result.index("BTC") < result.index("SOL")
+
+    def test_crypto_section_none(self):
+        assert "skipped or failed" in report_mod.format_crypto_section(None)
+
+    def test_crypto_section_no_positions(self):
+        crypto = {**CRYPTO, "position_balances": []}
+        assert "No open crypto positions" in report_mod.format_crypto_section(crypto)
+
+    def test_crypto_section_bad_numbers_coerced(self):
+        crypto = {
+            "balances": [{"instrument_name": "USD", "total_cash_balance": "not-a-number"}],
+            "position_balances": [],
+        }
+        result = report_mod.format_crypto_section(crypto)
+        assert "**Cash balance:** 0.00" in result
 
     def test_verdict_section_scorecard(self):
         result = report_mod.format_verdict_section(VERDICT_FILE, cached=False)
@@ -198,6 +241,23 @@ class TestBuildReport:
         assert "## Top news" in body
         assert "### AMZN" in body
         assert "- fetch_news: done" in body
+
+    def test_crypto_section_included_when_path_given(self, tmp_path):
+        analysis, tickers, _ = self._fixture_paths(tmp_path)
+        crypto = tmp_path / "crypto.json"
+        crypto.write_text(json.dumps(CRYPTO))
+        body = report_mod.build_report(
+            date="2026-08-01",
+            analysis_path=str(analysis),
+            tickers_path=str(tickers),
+            portfolio_path=None,
+            crypto_path=str(crypto),
+            verdicts=[],
+            stages={},
+            with_summary=False,
+        )
+        assert "## Crypto portfolio" in body
+        assert "| BTC | 0.015 | 900.00 |" in body
 
     def test_no_verdicts_placeholder(self, tmp_path):
         analysis, tickers, _ = self._fixture_paths(tmp_path)

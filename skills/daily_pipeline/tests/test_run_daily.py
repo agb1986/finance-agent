@@ -18,6 +18,7 @@ from daily_pipeline.config import DEFAULTS, load_config
 from daily_pipeline.runner import (
     StageError,
     acquire_lock,
+    build_market_context,
     find_cached_verdict,
     load_manifest,
     plan,
@@ -146,6 +147,13 @@ class TestLockAndPrune:
         os.utime(lock, (stale, stale))
         assert acquire_lock(tmp_path).exists()
 
+    def test_concurrent_lock_creation_raises(self, tmp_path):
+        # Simulate the loser of the exists-check race: the file appears between
+        # the check and the atomic create.
+        with patch.object(Path, "open", side_effect=FileExistsError):
+            with pytest.raises(StageError, match="another run won"):
+                acquire_lock(tmp_path)
+
     def test_prune_removes_only_old_runs(self, tmp_path):
         (tmp_path / "run_20260701").mkdir()
         (tmp_path / "run_20260731").mkdir()
@@ -184,7 +192,78 @@ class TestVerdictCache:
         ) as run_mock:
             assert run_trader("AMZN", rounds=2) == "verdict.json"
         assert run_mock.call_count == 3
+        assert run_mock.call_args_list[0].args[1] == ["--symbol", "AMZN"]
         assert run_mock.call_args_list[1].args[1] == ["--input", "panel.json", "--rounds", "2"]
+
+    def test_run_trader_passes_context_file_to_panel(self):
+        with patch.object(
+            runner, "run_script", side_effect=["panel.json", "debate.json", "verdict.json"]
+        ) as run_mock:
+            run_trader("AMZN", rounds=2, context_file="ctx.md")
+        assert run_mock.call_args_list[0].args[1] == [
+            "--symbol",
+            "AMZN",
+            "--context-file",
+            "ctx.md",
+        ]
+
+
+# ── market context ────────────────────────────────────────────────────────────
+
+QUOTE = {
+    "symbol": "AMZN",
+    "fetched_at": "2026-08-08T07:00:00Z",
+    "name": "Amazon.com, Inc.",
+    "price": 185.5,
+    "currency": "USD",
+    "change": 1.2,
+    "change_percent": 0.65,
+    "volume": 1000,
+    "market_cap": 2_000_000,
+    "pe_ratio": 40.5,
+    "week_52_high": 200.0,
+    "week_52_low": 140.0,
+}
+
+HISTORY = {
+    "symbol": "AMZN",
+    "period": "6mo",
+    "fetched_at": "2026-08-08T07:00:00Z",
+    "bars": [
+        {
+            "date": f"2026-07-{day:02d}",
+            "open": 180.0 + day,
+            "high": 181.0 + day,
+            "low": 179.0 + day,
+            "close": 180.5 + day,
+            "volume": 100 + day,
+        }
+        for day in range(1, 26)
+    ],
+}
+
+
+class TestBuildMarketContext:
+    def _paths(self, tmp_path):
+        quote_path = tmp_path / "quote.json"
+        quote_path.write_text(json.dumps(QUOTE))
+        history_path = tmp_path / "history.json"
+        history_path.write_text(json.dumps(HISTORY))
+        return str(quote_path), str(history_path)
+
+    def test_writes_context_file(self, tmp_path):
+        quote_path, history_path = self._paths(tmp_path)
+        with patch.object(runner, "run_script", side_effect=[quote_path, history_path]) as run_mock:
+            result = build_market_context("AMZN", tmp_path, "6mo")
+        assert result == tmp_path / "context_AMZN.md"
+        content = result.read_text()
+        assert "AMZN" in content
+        assert "185.50" in content
+        assert run_mock.call_args_list[1].args[1] == ["--symbol", "AMZN", "--period", "6mo"]
+
+    def test_fetch_failure_returns_none(self, tmp_path):
+        with patch.object(runner, "run_script", side_effect=StageError("yahoo down")):
+            assert build_market_context("AMZN", tmp_path, "6mo") is None
 
 
 # ── plan ──────────────────────────────────────────────────────────────────────
@@ -228,10 +307,16 @@ def pipeline_env(tmp_path, monkeypatch):
     verdict_path.write_text(
         json.dumps({"symbol": "AMZN", "generated_at": "2026-08-01T09:00:00Z", "verdict": {}})
     )
+    quote_path = tmp_path / "quote.json"
+    quote_path.write_text(json.dumps(QUOTE))
+    history_path = tmp_path / "history.json"
+    history_path.write_text(json.dumps(HISTORY))
 
     outputs = {
         "skills/financial_news/scripts/fetch_news.py": str(news_path),
         "skills/financial_news/scripts/analyze_news.py": str(analysis_path),
+        "skills/check_stock/scripts/fetch_quote.py": str(quote_path),
+        "skills/check_stock/scripts/fetch_history.py": str(history_path),
     }
 
     def fake_run_script(script, args=None, timeout=None):
@@ -284,6 +369,34 @@ class TestRunPipeline:
             run_pipeline(DEFAULTS, date="20260801", skip_email=True, with_summary=False)
         assert first_count == 2
         assert len(calls) == 2  # nothing re-ran on resume
+
+    def test_trader_grounded_with_market_context(self, pipeline_env):
+        with (
+            patch.object(runner, "find_cached_verdict", return_value=None),
+            patch.object(
+                runner, "run_trader", return_value=str(pipeline_env["verdict"])
+            ) as trader_mock,
+        ):
+            manifest = run_pipeline(DEFAULTS, date="20260801", skip_email=True, with_summary=False)
+
+        context_file = trader_mock.call_args.kwargs["context_file"]
+        assert context_file is not None
+        assert Path(context_file).exists()
+        assert "185.50" in Path(context_file).read_text()
+        assert manifest["trader"]["AMZN"]["context"] == context_file
+
+    def test_trader_runs_ungrounded_when_market_data_fails(self, pipeline_env):
+        with (
+            patch.object(runner, "find_cached_verdict", return_value=None),
+            patch.object(runner, "build_market_context", return_value=None),
+            patch.object(
+                runner, "run_trader", return_value=str(pipeline_env["verdict"])
+            ) as trader_mock,
+        ):
+            manifest = run_pipeline(DEFAULTS, date="20260801", skip_email=True, with_summary=False)
+
+        assert trader_mock.call_args.kwargs["context_file"] is None
+        assert manifest["trader"]["AMZN"]["status"] == "done"
 
     def test_email_sent_when_configured(self, pipeline_env):
         with (
@@ -347,11 +460,37 @@ class TestMain:
         assert "report.md" in capsys.readouterr().out
         assert run_mock.call_args.kwargs["skip_email"] is True
 
-    def test_stage_error_exits_nonzero(self):
+    def test_stage_error_exits_nonzero_and_sends_alert(self):
         with (
             patch.object(run_daily_script, "run_pipeline", side_effect=StageError("boom")),
+            patch.object(run_daily_script, "send_report") as send_mock,
             patch.object(sys, "argv", ["run_daily.py"]),
             pytest.raises(SystemExit) as excinfo,
         ):
             run_daily_script.main()
         assert excinfo.value.code == 1
+        subject, body = send_mock.call_args.args
+        assert "FAILED" in subject
+        assert "boom" in body
+
+    def test_alert_failure_does_not_mask_exit_code(self):
+        with (
+            patch.object(run_daily_script, "run_pipeline", side_effect=StageError("boom")),
+            patch.object(
+                run_daily_script, "send_report", side_effect=RuntimeError("smtp not configured")
+            ),
+            patch.object(sys, "argv", ["run_daily.py"]),
+            pytest.raises(SystemExit) as excinfo,
+        ):
+            run_daily_script.main()
+        assert excinfo.value.code == 1
+
+    def test_success_sends_no_alert(self, capsys):
+        manifest = {"report": "tmp/run_20260801/report.md"}
+        with (
+            patch.object(run_daily_script, "run_pipeline", return_value=manifest),
+            patch.object(run_daily_script, "send_report") as send_mock,
+            patch.object(sys, "argv", ["run_daily.py", "--skip-email"]),
+        ):
+            run_daily_script.main()
+        send_mock.assert_not_called()

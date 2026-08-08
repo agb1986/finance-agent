@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
-from common.http_client import HttpClient
+from common.http_client import RETRY_STATUSES, USER_AGENT, HttpClient
 
 
 @pytest.fixture(autouse=True)
@@ -34,6 +34,27 @@ class TestHttpClientInit:
     def test_custom_timeout(self):
         client = HttpClient("https://example.com", timeout=10)
         assert client.timeout == 10
+
+    def test_user_agent_set(self):
+        client = HttpClient("https://example.com")
+        assert client.session.headers["User-Agent"] == USER_AGENT
+
+    def test_custom_headers_do_not_remove_user_agent(self):
+        client = HttpClient("https://example.com", headers={"Authorization": "key123"})
+        assert client.session.headers["User-Agent"] == USER_AGENT
+
+    def test_retry_adapter_mounted(self):
+        client = HttpClient("https://example.com")
+        for prefix in ("https://", "http://"):
+            retry = client.session.get_adapter(f"{prefix}example.com").max_retries
+            assert retry.total == 3
+            assert set(RETRY_STATUSES) <= set(retry.status_forcelist)
+            assert "POST" in retry.allowed_methods
+
+    def test_retry_count_configurable(self):
+        client = HttpClient("https://example.com", retries=5)
+        retry = client.session.get_adapter("https://example.com").max_retries
+        assert retry.total == 5
 
 
 class TestHttpClientGet:

@@ -103,24 +103,44 @@ class TestLoadKeywords:
 
 
 class TestComputeKeywordScore:
-    def test_all_keywords_matched(self):
-        score, matched = compute_keyword_score("bitcoin etf rally", ["bitcoin", "etf"])
+    def test_matches_at_cap_score_one(self):
+        score, matched = compute_keyword_score(
+            "bitcoin etf fed rally", ["bitcoin", "etf", "fed", "gold"]
+        )
         assert score == 1.0
-        assert set(matched) == {"bitcoin", "etf"}
+        assert set(matched) == {"bitcoin", "etf", "fed"}
 
     def test_no_keywords_matched(self):
         score, matched = compute_keyword_score("apple earnings beat", ["bitcoin", "etf"])
         assert score == 0.0
         assert matched == []
 
-    def test_partial_match(self):
+    def test_single_match_is_one_third(self):
         score, matched = compute_keyword_score("bitcoin rally", ["bitcoin", "etf", "fed"])
         assert score == pytest.approx(1 / 3, abs=0.001)
         assert matched == ["bitcoin"]
 
+    def test_two_matches_is_two_thirds(self):
+        score, matched = compute_keyword_score("bitcoin etf rally", ["bitcoin", "etf", "fed"])
+        assert score == pytest.approx(2 / 3, abs=0.001)
+        assert set(matched) == {"bitcoin", "etf"}
+
+    def test_score_independent_of_keyword_list_size(self):
+        many = [f"kw{i}" for i in range(10)] + ["bitcoin"]
+        score_many, _ = compute_keyword_score("bitcoin rally", many)
+        score_few, _ = compute_keyword_score("bitcoin rally", ["bitcoin", "etf"])
+        assert score_many == score_few
+
+    def test_matches_beyond_cap_still_one(self):
+        keywords = ["bitcoin", "etf", "fed", "gold", "oil"]
+        score, matched = compute_keyword_score("bitcoin etf fed gold oil", keywords)
+        assert score == 1.0
+        assert len(matched) == 5
+
     def test_case_insensitive(self):
         score, matched = compute_keyword_score("BITCOIN ETF", ["bitcoin", "etf"])
-        assert score == 1.0
+        assert score == pytest.approx(2 / 3, abs=0.001)
+        assert set(matched) == {"bitcoin", "etf"}
 
     def test_score_rounded_to_4dp(self):
         score, _ = compute_keyword_score("bitcoin", ["bitcoin", "etf", "fed"])
